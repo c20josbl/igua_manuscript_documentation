@@ -79,7 +79,7 @@ bigslice -i input_sample_4 --threshold 300 -t 1 output_input_sample_4
 An example command used to run BiG-SCAPE (v1.1.5) on the proGenomes3 representative samples is shown below. This is was used in a Nextflow script (modified to work with Nextflow) to create reports logging time and memory usage.
 
 ```{r, results='hide', eval=FALSE, echo=TRUE}
-  bigscape.py --label sample_1_8_cpus --inputdir /parsed_results --include_gbk_str $variable --outputdir sample_1_8_cpus --cores 8 --mode glocal --pfam_dir /databases/pfam --anchorfile /anchor_domains.txt --include_singletons --mibig --hybrids-off
+bigscape.py --label sample_1_8_cpus --inputdir /parsed_results --include_gbk_str $variable --outputdir sample_1_8_cpus --cores 8 --mode glocal --pfam_dir /databases/pfam --anchorfile /anchor_domains.txt --include_singletons --mibig --hybrids-off
 ```
 
 
