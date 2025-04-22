@@ -1,0 +1,1130 @@
+---
+title: ""
+date: "2024-02-26"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    css: "style.css"
+    includes:
+      in_header: header_igua.html
+---
+
+## Supplementary tables
+
+* Supplementary table 1: The manually curated dataset of BGCs, originally from the BiG-SCAPE paper
+* Supplementary table 2: BiG-SCAPE clustering of the manually curated dataset using glocal clustering
+* Supplementary table 3: BiG-SCAPE clustering of the manually curated dataset using global clustering
+* Supplementary table 4: IGUA clustering of the manually curated dataset with default settings
+* Supplementary table 5: BiG-SCAPE clustering of the *Streptomyces* dataset using glocal clustering
+* Supplementary table 6: IGUA clustering of the *Streptomyces* dataset with default settings
+* Supplementary table 7: *Streptomyces* samples described
+* Supplementary table 8: Time taken to cluster *Streptomyces* samples by IGUA
+* Supplementary table 9: proG3 samples described
+* Supplementary table 10: Speed and time used to cluster proG3 samples by IGUA, BiG-SCAPE and BiG-SLiCE
+* Supplementary table 11: IGUA clustering of the proG3 dataset with default settings
+* Supplementary table 12: Metadata attached to the proG3 Seurat object
+* Supplementary table 13: IGUA clustering of secretion system dataset with default settings
+* Supplementary table 14: GTDB assignments for secretion system host genomes
+* Supplementary table 15: Metadata attached to the secretion systems Seurat object
+* Supplementary table 16: IGUA clustering of the prophage dataset with default settings
+* Supplementary table 17: IGUA clustering of the prophage dataset with 0.99 threshold
+* Supplementary table 18: Metadata attached to the prophage Seurat object
+
+## Other tables used in this notebook
+
+* `prophage_metadata.tsv` - metadata to attach to the prophage Seurat object, leading to supplementary table 18
+* `single_locus_clusters_renamed2tax.tsv` - taxonomic assignments of the secretion system gene clusters, similar to supplementary table 14
+* `single_locus_clusters_renamed.tsv` - additional metadata for the secretion systems, included in the larger supplementary table 15
+* `bgcs_to_phylum.tsv` - maps BGCs in the proG3 dataset to taxonomic information
+* `AMI_benchmark_data.tsv`- AMI values for each clustering distance and linkage method tested when optimising default settings for IGUA
+* `NMI_benchmark_data.tsv` - NMI values for each clustering distance and linkage method tested when optimising default settings for IGUA
+* `purity_benchmark_data.tsv` - purity values for each clustering distance and linkage method tested when optimising default settings for IGUA
+* `GCFs_benchmark_data.tsv` - the number of GCFs created for each clustering distance and linkage method tested when optimising default settings for IGUA
+* `41589_2019_400_MOESM31_ESM.xlsx` - original Excel file from the BiG-SCAPE paper detailing their manually curated dataset
+* `pfam_annotation_total_proG3/labels.tsv` - labels associated with the Pfam annotation of the proG3 dataset
+* `biosynthetic_classes.tsv` - the biosynthetic class annotation of the BGCs from the proG3 dataset
+* `pfam_annotation_prophage/labels.tsv` - labels associated with the Pfam annotation of the prophage dataset
+
+## Seurat objects
+
+* `pfams_proG3.RDS` - Seurat object associated with the proG3 BGC dataset
+* `pfams_secretion.RDS`- Seurat object associated with the secretion systems dataset
+* `pfams_prophage.RDS` - Seurat object associated with the prophage dataset
+
+## Additional scripts and code
+
+* `proG3_rep_sampling.R` was used to create the proGenomes3 samples used for speed and memory testing. This script uses the file `proGenomes3_specI_lineageGTDB.tab`, downloaded from https://progenomes.embl.de/download.cgi. 
+* `ìgua_benchmark_parameter.R` was used to generate the AMI, NRI, NMI, purity and GCF counts for the benchmarking done using the manually curated dataset. This script was re-used for the purity measurements calculated, and thus some lines of code are commented out depending on what was calculated. In its current state, the script creates the GCF dataframe. 
+* `strepto_sampling.py` was used to create the *Streptomyces* samples.
+
+The command used to run BiG-SCAPE (v1.1.5) on the benchmark dataset is shown below (only showing global mode). The `$variable` represented a list of the manually curated dataset BGC IDs, to only include those BGCs in the clustering.
+
+```{r, results='hide', eval=FALSE, echo=TRUE}
+bigscape.py --label benchmark --inputdir /MIBiG_1.3/MIBiG_1.3_final --include_gbk_str $variable --outputdir /big_scape_benchmark/default_global/ --cores 8 --mode global --pfam_dir /databases/pfam --anchorfile /anchor_domains.txt --cutoffs 0.75 --hybrids-off
+```
+
+The command used to run BiG-SCAPE (v1.1.5) on the *Streptomyces* dataset is shown below.
+
+```{r, results='hide', eval=FALSE, echo=TRUE}
+bigscape.py --label strepto --inputdir /strepto_results/ --outputdir /big_results/ --cores 28 --mode glocal --pfam_dir /databases/pfam --anchorfile /anchor_domains.txt --include_singletons --mibig --hybrids-off
+```
+
+An example command used to run BiG-SLiCE v(1.1.0) on the proGenomes3 representative samples is shown below. This was used in a Nextflow script (modified to work with Nextflow) to create report logging time and memory usage.
+
+```{r, results='hide', eval=FALSE, echo=TRUE}
+bigslice -i input_sample_4 --threshold 300 -t 1 output_input_sample_4
+```
+
+An example command used to run BiG-SCAPE (v1.1.5) on the proGenomes3 representative samples is shown below. This is was used in a Nextflow script (modified to work with Nextflow) to create reports logging time and memory usage.
+
+```{r, results='hide', eval=FALSE, echo=TRUE}
+  bigscape.py --label sample_1_8_cpus --inputdir /parsed_results --include_gbk_str $variable --outputdir sample_1_8_cpus --cores 8 --mode glocal --pfam_dir /databases/pfam --anchorfile /anchor_domains.txt --include_singletons --mibig --hybrids-off
+```
+
+
+## Figure code
+
+Code for the figures has been included below. Please note that the chunks are not executed and thus figures will not be included in the knitted notebook, only the code chunks. Also note that any time a supplementary table is referred to, it is assumed that the table header has been removed prior.
+
+```{r, results='hide', eval=FALSE, echo=TRUE}
+
+#Packages used throughout this notebook
+
+library(readxl)
+library(tidyverse)
+library(khroma)
+library(ggnewscale)
+library(ggpubr)
+library(ComplexHeatmap)
+library(ggplotify)
+library(ggalluvial)
+library(ggmagnify)
+library(gridExtra)
+library(ggsignif)
+library(Signac)
+library(Seurat)
+library(clustree)
+
+```
+
+
+```{r, results='hide', eval=FALSE, echo=TRUE}
+###FIGURE 3 MASTER CODE
+
+#Setting the colour palette
+
+precols = c("#15889C", "#ED496F", "#8E1382", "#FFB300", "#FF6F00", "#43A047",
+            "#2D62A3", "#1F7530", "#573794", "#28AAE1", "#870F0F", "#24b177",
+            "#DDDDDD", "#7DCEA0", "#85C1E9", "#EB984E", "#EAD9D5", "#03CD4A",
+            "#CDDC39", "#E0594B", "#C76CDE", "#8D6E63", "#486FF7", "#6300B5",
+            "#88E200", "#012824", "#0D3290", "#A347FB", "#54FC7A", "#EB1388",
+            "#B0978D", "#FE52CF", "#83F1F6", "#F1F847", "#2B1DFC", "#6C6F15", 
+            "#6CA05C", "#7788CD", "#F502F3", "#0DC290", "#FA0E03", "#3CAA0A",
+            "#BEFC8D", "#08F8EB", "#B1CD3F", "#D6A5FA", "#CE606C", "#AB1EBA",
+            "#6ECC9F", "#054DDC", "#854F49", "#F22B21", "#3A0E43", "#225805",
+            "#37D160", "#E4B974", "#A8BADE", "#47EDD1", "#F47A92", "#9106EB",
+            "#81AA20", "#D7FDFD", "#5DEB2E", "#F82745", "#6435E0", "#027FFE",
+            "#8E3101", "#16F648", "#1C15BC", "#8BE46E", "#8D6FA0", "#E68FC6",
+            "#058CA9", "#9E018A", "#BDFD0B", "#B22760", "#2BF49F", "#CB9348",
+            "#9D8303", "#C251A1", "#46ADAF", "#A3E3AF", "#22BB34", "#6EA3FA",
+            "#260374", "#1C3854", "#405D37", "#C21DF3", "#FCEA92", "#537F88",
+            "#FD4C18", "#F2D71E")
+
+##Prophage section
+
+#importing the RDS file and creating the prophage UMAP figure
+pfams_pro <- readRDS("pfams_prophage.RDS")
+pro_umap=DimPlot(pfams_pro, cols=precols, label=FALSE, raster=FALSE, pt.size=1,
+                 alpha = 0.5)+NoLegend()
+
+#importing prophage clustering by IGUA and associated metadata
+prophage_metadata <- read.delim("prophage_metadata.tsv", header=TRUE)
+pro_igua=read.delim('supplementary_table_17.tsv', header=TRUE)
+
+colnames(prophage_metadata)[1]="cluster_id"
+
+#merging to one master file
+pro_metadata_igua=merge(prophage_metadata, pro_igua, by="cluster_id")
+
+#filtering singleton GCFs
+pro_metadata_igua= pro_metadata_igua %>% 
+  group_by(gcf_id) %>%
+  filter(n() >=2)
+
+#making the histogram for phyla per GCFs
+metadata_hist= pro_metadata_igua %>% 
+  group_by(phylum, gcf_id) %>% 
+  summarise(n=n())
+
+
+histogram_data <- metadata_hist %>%
+  group_by(gcf_id) %>%
+  summarise(phylum_count = n_distinct(phylum))
+
+
+pro_hist_phyla=ggplot(histogram_data, aes(x=phylum_count))+
+  geom_histogram(fill="#ED496F", binwidth = 1)+
+  xlab("Phyla per GCF")+
+  ylab("# of GCFs")+
+  theme_classic()+
+  theme(axis.text = element_text(size=13.5),
+        axis.title = element_text(size=15))+
+  xlim(c(0,15))+
+  scale_y_continuous(breaks = seq(0,15000,2500))
+
+#making the second histogram, with gene clusters per GCF
+
+pro_gcfs=pro_igua %>% 
+  group_by(gcf_id) %>% 
+  summarise(n=n())
+
+pro_hist_GCs=ggplot(pro_gcfs, aes(x=n))+
+  geom_histogram(fill="#15889C", binwidth = 1)+
+  xlab("Gene clusters per GCF")+
+  ylab("# of GCFs")+
+  theme_classic()+
+  theme(axis.text = element_text(size=13.5),
+        axis.title = element_text(size=15))+
+  xlim(c(0,15))+
+  scale_y_continuous(breaks = seq(0,75000,25000))
+
+#making the size reduction bar plot
+
+Step=c(1:4)
+n=c(100, (340994/356776)*100, (326220/356776)*100, (106749/356776)*100)
+
+df_pro=data.frame(Step, n)
+
+df_interp <- data.frame(
+  Step = seq(1, 4, by = 0.0001)  # finer steps
+) %>%
+  mutate(n = approx(df_pro$Step, df_pro$n, xout = Step)$y)
+
+df_interp$StepGroup <- cut(
+  df_interp$Step,
+  breaks = c(0, 1, 2, 3, 4),
+  labels = c("GCs", "FRs", "NRs", "GCFRs"),
+  right = TRUE
+)
+
+# Define colors for each StepGroup
+MyColours <- precols[1:3]
+
+# Plot
+pro_area_size=ggplot() +
+  geom_area(data = df_interp, aes(x = Step, y = n, fill = StepGroup),alpha=0.45,
+            show.legend = FALSE) +
+  geom_line(data = df_pro, aes(x = Step, y = n), colour = "grey60", size = 2) +
+  geom_point(data = df_pro, aes(x = Step, y = n), colour = "grey60", size = 3) +
+  geom_point(data = df_pro, aes(x = Step, y = n), colour = "white", size = 1.5) +
+  scale_fill_manual(values = MyColours, name = "Step Intervals") +
+  scale_x_continuous(breaks = 1:4, labels = c("GCs", "FRs", "NRs", "GCFRs")) +
+  ylab("% of initial dataset size") +
+  theme_classic() +
+  theme(
+    axis.title.x = element_blank(),
+    axis.text = element_text(size = 13.5),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 13.5),
+    legend.title = element_text(size = 15)
+  )
+
+##Secretion system section
+
+#importing the RDS file and creating the secretion system UMAP
+
+pfams_sec <- readRDS("pfams_secretion.RDS")
+
+sec_umap=DimPlot(object = pfams_sec, label = FALSE, cols=precols, alpha=0.5,
+                              pt.size = 1) + NoLegend()
+
+#importing secretion system clustering by IGUA and associated metadata
+
+sec_tax=read.delim("single_locus_clusters_renamed2tax.tsv", header=FALSE)
+
+secretion_metadata <- read.delim("single_locus_clusters_renamed.tsv", header=FALSE)
+sec_igua=read.delim('supplementary_table_13.tsv', header=TRUE)
+
+#setting up one master file for secretion systems
+
+colnames(sec_igua)[1]="secretion"
+colnames(secretion_metadata)=c("contig_id","secretion","start","end","major_secretion_system_type",
+                               "minor_secretion_system_type","NCBI_nucleotide_accession")
+
+metadata_igua=merge(secretion_metadata, sec_igua, by="secretion")
+
+df_split <- do.call(rbind, strsplit(as.character(sec_tax$V4), ";"))
+colnames(df_split) <- c("kingdom","phylum", "class","order", "family",
+                        "genus","species")
+
+df <- cbind(sec_tax, df_split)
+
+colnames(df)[1:4]=c("secretion","NCBI_nucleotide_accession","gcf_XX","GTDBtax")
+
+tax_metadata_igua=merge(df, metadata_igua, by="secretion")
+
+#filtering singleton GCFs
+
+tax_metadata_igua= tax_metadata_igua %>% 
+  group_by(gcf_id) %>%
+  filter(n() >=2)
+
+#making the histogram for phyla per GCF
+
+metadata_hist= tax_metadata_igua %>% 
+  group_by(phylum, gcf_id) %>% 
+  summarise(n=n())
+
+
+histogram_data <- metadata_hist %>%
+  group_by(gcf_id) %>%
+  summarise(phylum_count = n_distinct(phylum))
+
+
+sec_hist_phyla=ggplot(histogram_data, aes(x=phylum_count))+
+  geom_histogram(fill="#ED496F", binwidth = 1)+
+  xlab("Phyla per GCF")+
+  ylab("# of GCFs")+
+  theme_classic()+
+  theme(axis.text = element_text(size=13.5),
+        axis.title = element_text(size=15))+
+  xlim(c(0,15))+
+  scale_y_continuous(breaks = seq(0,900,200))
+
+#making a second histogram for gene clusters per GCF
+
+sec_gcfs=sec_igua %>% 
+  group_by(gcf_id) %>% 
+  summarise(n=n())
+
+
+sec_hist_GCs=ggplot(sec_gcfs, aes(x=n))+
+  geom_histogram(fill="#15889C", binwidth = 1)+
+  xlab("Gene clusters per GCF")+
+  ylab("# of GCFs")+
+  theme_classic()+
+  theme(axis.text = element_text(size=13.5),
+        axis.title = element_text(size=15))+
+  xlim(c(0,15))+
+  scale_y_continuous(breaks = seq(0,2000,250))
+
+#making the size reduction bar plot
+
+
+Step=c(1:4)
+n=c(100, (7321/10576)*100, (5512/10576)*100, (2744/10576)*100)
+
+df_sec=data.frame(Step, n)
+
+df_interp <- data.frame(
+  Step = seq(1, 4, by = 0.0001)  # finer steps
+) %>%
+  mutate(n = approx(df_sec$Step, df_sec$n, xout = Step)$y)
+
+df_interp$StepGroup <- cut(
+  df_interp$Step,
+  breaks = c(0, 1, 2, 3, 4),
+  labels = c("GCs", "FRs", "NRs", "GCFRs"),
+  right = TRUE
+)
+
+# Define colors for each StepGroup
+MyColours <- precols[1:3]
+
+# Plot
+sec_area_size=ggplot() +
+  geom_area(data = df_interp, aes(x = Step, y = n, fill = StepGroup),alpha=0.45,
+            show.legend = FALSE) +
+  geom_line(data = df_sec, aes(x = Step, y = n), colour = "grey60", size = 2) +
+  geom_point(data = df_sec, aes(x = Step, y = n), colour = "grey60", size = 3) +
+  geom_point(data = df_sec, aes(x = Step, y = n), colour = "white", size = 1.5) +
+  scale_fill_manual(values = MyColours, name = "Step Intervals") +
+  scale_x_continuous(breaks = 1:4, labels = c("GCs", "FRs", "NRs", "GCFRs")) +
+  ylab("% of initial dataset size") +
+  theme_classic() +
+  theme(
+    axis.title.x = element_blank(),
+    axis.text = element_text(size = 13.5),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 13.5),
+    legend.title = element_text(size = 15)
+  )
+
+##BGCs section (proG3 dataset)
+
+#importing the RDS file and creating the secretion system UMAP
+
+pfams <- readRDS("pfams_proG3.RDS")
+
+bgcs_umap=DimPlot(object = pfams, label = FALSE, cols=precols, alpha=0.5, pt.size=1, 
+            raster=FALSE) + NoLegend()
+
+#importing BGC clustering by IGUA and associated metadata
+
+proG3_igua=read.delim('supplementary_table_11.tsv', header=TRUE)
+bgcs_to_phylum=read.delim('bgcs_to_phylum.tsv', header=TRUE)
+
+#filtering singleton GCFs from file with taxonomic information
+
+bgcs_to_phylum = bgcs_to_phylum%>% 
+  group_by(gcf_id) %>%
+  filter(n() >=2)
+
+#making histogram for phyla per GCF
+
+metadata_hist_bgcs= bgcs_to_phylum%>% 
+  group_by(phylum, gcf_id) %>% 
+  summarise(n=n())
+
+histogram_data <- metadata_hist_bgcs %>%
+  group_by(gcf_id) %>%
+  summarise(phylum_count = n_distinct(phylum))
+
+bgcs_hist_phyla=ggplot(histogram_data, aes(x=phylum_count))+
+  geom_histogram(fill="#ED496F", binwidth = 1)+
+  xlab("Phyla per GCF")+
+  ylab("# of GCFs")+
+  theme_classic()+
+  theme(axis.text = element_text(size=13.5),
+        axis.title = element_text(size=15))+
+  xlim(c(0,15))
+
+#making a histogram for BGCs per GCF
+
+proG3_gcfs=proG3_igua %>% 
+  group_by(gcf_id) %>% 
+  summarise(n=n())
+
+
+bgcs_hist_GCs=ggplot(proG3_gcfs, aes(x=n))+
+  geom_histogram(fill="#15889C", binwidth = 1)+
+  xlab("BGCs per GCF")+
+  ylab("# of GCFs")+
+  theme_classic()+
+  theme(axis.text = element_text(size=13.5),
+        axis.title = element_text(size=15))+
+  xlim(c(0,15))+
+  scale_y_continuous(breaks = seq(0,30000, 5000))
+
+#making the size reduction area plot
+
+
+Step=c(1:4)
+n=c(100, (285425/2829071)*100, (180920/2829071)*100, (56960/2829071)*100)
+
+df_bgcs=data.frame(Step, n)
+
+df_interp <- data.frame(
+  Step = seq(1, 4, by = 0.0001)  # finer steps
+) %>%
+  mutate(n = approx(df_bgcs$Step, df_bgcs$n, xout = Step)$y)
+
+df_interp$StepGroup <- cut(
+  df_interp$Step,
+  breaks = c(0, 1, 2, 3, 4),
+  labels = c("BGCs", "FRs", "NRs", "GCFRs"),
+  right = TRUE
+)
+
+# Define colors for each StepGroup
+MyColours <- precols[1:3]
+
+# Plot
+bgcs_area_size=ggplot() +
+  geom_area(data = df_interp, aes(x = Step, y = n, fill = StepGroup),alpha=0.45,
+            show.legend = FALSE) +
+  geom_line(data = df_bgcs, aes(x = Step, y = n), colour = "grey60", size = 2) +
+  geom_point(data = df_bgcs, aes(x = Step, y = n), colour = "grey60", size = 3) +
+  geom_point(data = df_bgcs, aes(x = Step, y = n), colour = "white", size = 1.5) +
+  scale_fill_manual(values = MyColours, name = "Step Intervals") +
+  scale_x_continuous(breaks = 1:4, labels = c("BGCs", "FRs", "NRs", "GCFRs")) +
+  ylab("% of initial dataset size") +
+  theme_classic() +
+  theme(
+    axis.title.x = element_blank(),
+    axis.text = element_text(size = 13.5),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 13.5),
+    legend.title = element_text(size = 15)
+  )
+
+
+#arranging all plots in a panel
+
+
+ggarrange(
+  ggarrange(bgcs_hist_GCs, sec_hist_GCs, pro_hist_GCs, align="hv",
+            ncol = 3, labels = c("A", "E", "I")),
+  ggarrange(bgcs_area_size, sec_area_size, pro_area_size, align="hv",
+            ncol = 3, labels = c("B", "F", "J")),
+  ggarrange(bgcs_umap,sec_umap,pro_umap,
+            align = "hv", ncol = 3,
+            labels = c("C", "G", "K")),
+  ggarrange(bgcs_hist_phyla, sec_hist_phyla, pro_hist_phyla,
+            align = "hv", ncol = 3,
+            labels = c("D", "H","L")),
+  align = "hv", heights = c(0.5,0.65,2,0.5), nrow = 4
+)
+```
+
+
+```{r, results='hide', eval=FALSE, echo=TRUE}
+###SUPPLEMENTARY FIGURE 1 MASTER CODE
+
+#Setting the colour palette
+
+bright <- color("bright")
+
+#Loading AMI data
+
+AMI_benchmark_data <- read.csv("AMI_benchmark_data.tsv", sep="")
+
+#Creating AMI plot
+
+p1=ggplot(AMI_benchmark_data,aes(x=distance,y=ARIs,group=group, color=group))+
+  geom_line(lwd=1)+ylab("AMI")+xlab("Clustering distance")+
+  theme_classic()+
+  scale_color_manual(values=c(bright(7)))+  
+  labs(color="Linkage method")+
+  new_scale_color()+
+  geom_hline(aes(yintercept=0.8389638,
+                 color="glocal"), linetype=2)+
+  geom_hline(aes(yintercept=0.8364521,
+                 color="global"), linetype=3)+
+  scale_color_manual(values=c("black", "black"))+
+  labs(color="BiG-SCAPE")+
+  theme(axis.title = element_text(size=15),
+        axis.text = element_text(size=13.5),
+        legend.text = element_text(size=13.5),
+        legend.title = element_text(size=15))
+
+#Loading NMI data
+
+NMI_benchmark_data <- read.csv("NMI_benchmark_data.tsv", sep="")
+
+#Creating NMI plot
+
+p2=ggplot(NMI_benchmark_data,aes(x=distance,y=ARIs,group=group, color=group))+
+  geom_line(lwd=1)+ylab("NMI")+xlab("Clustering distance")+
+  theme_classic()+
+  scale_color_manual(values=c(bright(7)))+  
+  labs(color="Linkage method")+
+  new_scale_color()+
+  geom_hline(aes(yintercept=0.936672,
+                 color="glocal"), linetype=2)+
+  geom_hline(aes(yintercept=0.9347541,
+                 color="global"), linetype=3)+
+  scale_color_manual(values=c("black", "black"))+
+  labs(color="BiG-SCAPE")+
+  theme(axis.title = element_text(size=15),
+        axis.text = element_text(size=13.5),
+        legend.text = element_text(size=13.5),
+        legend.title = element_text(size=15))
+
+#Loading purity data
+
+purity_benchmark_data <- read.csv("purity_benchmark_data.tsv", sep="")
+
+#Creating purity plot
+
+p3=ggplot(purity_benchmark_data,aes(x=distance,y=purity,group=group, color=group))+
+  geom_line(lwd=1)+ylab("Purity")+xlab("Clustering distance")+
+  theme_classic()+
+  scale_color_manual(values=c(bright(7)))+  
+  labs(color="Linkage method")+
+  new_scale_color()+
+  geom_hline(aes(yintercept=0.7809798,
+                 color="glocal"), linetype=2)+
+  geom_hline(aes(yintercept=0.7707736,
+                 color="global"), linetype=3)+
+  scale_color_manual(values=c("black", "black"))+
+  labs(color="BiG-SCAPE")+
+  theme(axis.title = element_text(size=15),
+        axis.text = element_text(size=13.5),
+        legend.text = element_text(size=13.5),
+        legend.title = element_text(size=15))
+
+#Loading GCF data
+
+GCFs_benchmark_data <- read.csv("GCFs_benchmark_data.tsv", sep="")
+
+#Creating GCF plot
+
+p4=ggplot(GCFs_benchmark_data,aes(x=distance,y=GCFs,group=group, color=group))+
+  geom_line(lwd=1)+ylab("Number of GCFs")+xlab("Clustering distance")+
+  theme_classic()+
+  scale_color_manual(values=c(bright(7)))+  
+  labs(color="Linkage method")+
+  new_scale_color()+
+  geom_hline(aes(yintercept=81,
+                 color="glocal"), linetype=2)+
+  geom_hline(aes(yintercept=80,
+                 color="global"), linetype=3)+
+  scale_color_manual(values=c("black", "black"))+
+  labs(color="BiG-SCAPE")+
+  theme(axis.title = element_text(size=15),
+        axis.text = element_text(size=13.5),
+        legend.text = element_text(size=13.5),
+        legend.title = element_text(size=15))
+
+#Creating the panel figure
+
+ggarrange(p1,p2,p3,p4,
+          nrow = 2, ncol=2, align = "hv",
+          labels = c("A", "B", "C", "D"))
+```
+
+```{r, results='hide', eval=FALSE, echo=TRUE}
+###SUPPLEMENTARY FIGURE 2 MASTER CODE
+
+#Filtering the original BiG-SCAPE manually curated dataset to generate the final manually curated dataset to be used
+
+curated=read_excel("41589_2019_400_MOESM31_ESM.xlsx")
+curated=curated[-c(288,289,290,291,292,293,294,308,309,310),]
+sep_curated=curated %>%
+  separate_rows(`MIBiG accession`, sep = ",")
+sep_curated$`MIBiG accession`=str_trim(sep_curated$`MIBiG accession`, side=c("both"))
+sep_curated=data.frame(sep_curated$`MIBiG accession`,sep_curated$Group)
+colnames(sep_curated)=c("mibig","group")
+ann_curated=data.frame(curated$Class, curated$Group)
+colnames(ann_curated)=c("class","group")
+BGCs=c("BGC0000015", "BGC0000095","BGC0000322",
+       "BGC0000462","BGC0000629","BGC0000875",
+       "BGC0000945", "BGC0001081", "BGC0001147",
+       "BGC0001208", "BGC0001232", "BGC0001347")
+b=length(BGCs)
+temp1=0
+for (y in 1:b){
+  temp1=c(temp1,c(which(sep_curated$mibig==BGCs[y])))
+}
+sep_curated=sep_curated[-temp1,]
+
+#Importing the BiG-SCAPE clustering of the manually curated dataset and filtering out records removed from the original curated dataset
+
+big_scape_glocal <- read.delim("supplementary_table_2.tsv", header=FALSE, comment.char="#", stringsAsFactors=TRUE)
+colnames(big_scape_glocal)=c("mibig","GCF")
+big_scape_glocal$mibig=sapply(big_scape_glocal$mibig, function(x)
+  sub(".1", "",x,fixed=TRUE))
+
+glocal=big_scape_glocal %>%
+  group_by(GCF) %>%
+  filter(n() >=2)
+
+BGCs=c("BGC0000015", "BGC0000095","BGC0000322",
+       "BGC0000462","BGC0000629","BGC0000875",
+       "BGC0000945", "BGC0001081", "BGC0001147",
+       "BGC0001208", "BGC0001232", "BGC0001347")
+n=length(BGCs)
+temp=0
+
+for (i in 1:n){
+  temp=c(temp,c(which(glocal$mibig==BGCs[i])))
+}
+glocal_f=glocal[-temp,]
+
+merged_data2=merge(sep_curated,glocal_f,by="mibig", all.x = TRUE)
+
+data3=merged_data2 %>%
+  group_by(group, GCF) %>% 
+  summarise(n=n()) 
+
+data3$row=row.names(data3)
+
+#Creating annotations
+
+ann_merge=data3 %>% inner_join(ann_curated,
+                                     by="group")
+
+ann_merge=ann_merge[!duplicated(ann_merge$row),]
+ann_row=data.frame(ann_merge$group,ann_merge$class)
+ann_row=ann_row[!duplicated(ann_row$ann_merge.group),]
+row.names(ann_row)=ann_row$ann_merge.group
+ann_row2=data.frame(ann_row$ann_merge.class)
+row.names(ann_row2)=row.names(ann_row)
+colnames(ann_row2)=c("Class")
+
+#Sorting the columns
+
+contingency.table <- table(merged_data2$GCF, merged_data2$group)
+my.truth <- names(sort(table(merged_data2$group), decreasing = T))
+gecco.clusters <- names(sort(table(merged_data2$GCF), decreasing = T))
+
+yeet <- function(mymat, ref){
+  find.clusters <- c()
+  used.clusters <-c()
+  # loop through reference list
+  for (i in 1:length(ref)){
+    clus <- ref[i]
+    # take the column of the contintingency table that matches the current reference GCF
+    # finds the row that yields the GCF with maximum overlap
+    # if there are ties, R takes the first one
+    clus.bgcs <- rownames(mymat)[which.max(mymat[,which(colnames(mymat)==clus)])]
+    # if that particular maximum GCF hasn't been included yet...
+    # (this is done to deal with ties)
+    if (!(clus.bgcs%in%used.clusters)){
+      # append the maximum GCF to our final list of clusters, as well as out "used" GCF list
+      find.clusters <- c(find.clusters, clus.bgcs)
+      used.clusters <- c(used.clusters, clus.bgcs)
+    }
+  }
+  for (i in 1:length(rownames(mymat))){
+  clus.missing <- rownames(mymat)[i]
+  # if the GCF isn't included in our final list...
+  if (!(clus.missing%in%used.clusters)){
+    # add it
+    used.clusters <- c(used.clusters, clus.missing)
+    find.clusters <- c(find.clusters, clus.missing)
+  }
+}
+# return ordered GCFs
+return(find.clusters)
+}
+
+
+order.big <- yeet(mymat = contingency.table, ref = my.truth)
+final <- contingency.table
+final <- final[match(order.big, rownames(final)),]
+order.gecco <- yeet(mymat = t(final), ref = rownames(final))
+final <- final[,match(order.gecco, colnames(final))]
+
+#Creating the final heatmap
+
+p8=as.ggplot(pheatmap(t(final), color = hcl.colors(50, "YlGnBu"), border_color = F,cluster_rows = F,
+         cluster_cols = F,
+         show_colnames = FALSE,fontsize = 5, annotation_row = ann_row2,
+         annotation_colors = ann_colors, annotation_names_row = FALSE))
+p8
+
+```
+
+```{r, results='hide', eval=FALSE, echo=TRUE}
+###SUPPLEMENTARY FIGURE 3 MASTER CODE
+
+##Panel A
+
+#Loading BiG-SCAPE clustering of the Streptomyces dataset
+
+big_scape <- read.delim("supplementary_table_5.tsv", header=FALSE, comment.char="#")
+colnames(big_scape)=c("BGC","GCF_b")
+
+#Removing singleton GCFs
+
+big_scape=big_scape%>%
+  group_by(GCF_b) %>%
+  filter(n() >=2)
+
+#Loading the IGUA clustering of the Streptomyces dataset
+
+igua_strepto <- read.delim("supplementary_table_6.tsv")
+igua=data.frame(igua_strepto$cluster_id, igua_strepto$gcf_id)
+colnames(igua)=c("BGC","GCF_h")
+
+#Removing singleton GCFs
+
+igua=igua%>%
+  group_by(GCF_h) %>%
+  filter(n() >=2)
+
+#Merging the two datasets
+
+merged_data=merge(big_scape,igua,by="BGC", all.y = TRUE)
+
+data2=merged_data %>% 
+  group_by(GCF_h, GCF_b) %>% 
+  summarise(n=n())
+
+#Creating the alluvial plot
+
+p10=ggplot(data2,
+       aes(y = n, axis1 = GCF_h, axis2 = GCF_b)) +
+  geom_alluvium(width = 1/12, aes(fill="dodgerblue"), show.legend = FALSE) +
+  scale_x_discrete(limits = c("GCF_h", "GCF_b"), expand = c(.05, .05)) +
+  scale_fill_manual(values=c("dodgerblue"))+
+  theme_classic()+
+  theme(axis.line.y = element_blank(), axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(), axis.title.y = element_blank(),
+        axis.text.x = element_text(size = 10))+
+  scale_x_continuous(breaks = 1:2, labels=c("IGUA","BiG-SCAPE"))
+
+p10
+
+##Panel B
+
+#Importing IGUA clustering of the Streptomyces dataset
+
+igua_strepto <- read.delim("supplementary_table_6.tsv")
+
+#Filtering singleton GCFs
+
+data=igua_strepto %>%
+  group_by(gcf_id) %>%
+  summarise(n=n())
+#Importing the BiG-SCAPE clustering of the Streptomyces dataset
+
+big_scape <- read.delim("supplementary_table_5.tsv", header=FALSE, comment.char="#")
+colnames(big_scape)=c("BGC","GCF_b")
+
+#Filtering singleton GCFs
+
+data2=big_scape %>%
+  group_by(GCF_b) %>%
+  summarise(n=n())
+
+#Creating the histogram
+
+from <- c(xmin = 0, xmax = 15, ymin = 0, ymax = 3500)
+to <- c(xmin = 200, xmax = 480, ymin = 1000, ymax = 3600)
+
+p12=ggplot()+
+  geom_histogram(data=data2, aes(x=n, fill="b", color="b"),
+                 binwidth = 1,show.legend=TRUE, size=0.3, alpha=0.9)+
+  geom_histogram(data=data, aes(x=n, fill="p", color="p"),
+                 binwidth = 1, show.legend = TRUE, size=0.3, alpha=0.9)+
+  xlab("BGCs per GCF")+
+  ylab("Number of GCFs")+
+  theme_classic()+
+  scale_color_manual(name="Clustering tool", values=c("b"="black", "p"="black"), labels=c("b"="BiG-SCAPE", "p"="IGUA"))+
+  scale_fill_manual(name="Clustering tool", values=c("b"="#33BBEE", "p"="#009988"), labels=c("b"="BiG-SCAPE", "p"="IGUA"))+
+  geom_magnify(data=data, from=from, to=to, shadow = FALSE,
+               axes = "xy",
+               corners = 0.05,
+               proj = "facing",
+               linewidth = 0.35,
+               linetype = 1,
+               proj.linetype = 3)
+p12
+
+##Panel C
+
+#Importing the BiG-SCAPE clustering of the Streptomyces dataset
+
+big_scape <- read.delim("supplementary_table_5.tsv", header=FALSE, comment.char="#")
+colnames(big_scape)=c("BGC","GCF_b")
+
+#Removing singleton GCFs
+big_scape=big_scape%>%
+  group_by(GCF_b) %>%
+  filter(n() >=2)
+
+#Importing the IGUA clustering of the Streptomyces dataset
+
+igua_strepto <- read.delim("supplementary_table_6.tsv")
+igua=data.frame(igua_strepto$cluster_id, igua_strepto$gcf_id)
+colnames(igua)=c("BGC","GCF_h")
+
+#Filtering singleton GCFs
+
+igua=igua%>%
+  group_by(GCF_h) %>%
+  filter(n() >=2)
+
+#Merging the two datasets
+
+merged_data=merge(big_scape,igua,by="BGC", all.x = TRUE)
+
+data2=merged_data %>%
+  group_by(GCF_b, GCF_h) %>% 
+  summarise(n=n()) 
+
+data2=data2[order(data2$n, decreasing = TRUE),]
+
+overlap=data2$GCF_b[1:100]
+df=data.frame(overlap)
+colnames(df)=c("GCF_b")
+
+merged=merge(df,merged_data, by="GCF_b", all.x = TRUE)
+cont=table(merged$GCF_b,merged$GCF_h)
+
+#Creating the heatmap
+
+
+p9=as.ggplot(pheatmap(cont, color = hcl.colors(50, "YlGnBu"), border_color = F,cluster_rows = TRUE,
+                      cluster_cols = TRUE, clustering_distance_rows = "euclidean",
+                      show_colnames = FALSE,fontsize = 8, annotation_names_row = FALSE,
+                      show_rownames = FALSE,
+                      heatmap_legend_param = list(title = "# of BGCs")))
+
+p9
+
+#NOTE: clustering dendrograms were removed using Inkscape
+
+```
+
+```{r, results='hide', eval=FALSE, echo=TRUE}
+###SUPPLEMENTARY FIGURE 4 MASTER CODE
+
+#Creating the dataframe - note: this is the equivalent of supplementary table 8
+
+sample_size=c(rep(1000, 3), rep(2500, 3), rep(5000,3), rep(10000,3))
+time=c(27.8, 28, 35.6,
+       71, 73, 76,
+       190, 187, 182,
+       497, 477, 470)
+
+scatter_df=data.frame(sample_size,time)
+
+#Creating the plot
+
+p11=ggplot(scatter_df, aes(x=sample_size, y=time))+
+  geom_point(color="#4477AA", alpha=0.6, aes(size=1.5), show.legend = FALSE)+
+  theme_classic()+
+  xlab("Number of BGCs")+
+  ylab("Real time (sec)")+
+  geom_smooth(method = "glm", colour="black", lwd=0.5,
+              linetype=2, se=FALSE)+
+  theme(axis.title = element_text(size=15),
+        axis.text = element_text(size = 13.5))
+p11
+```
+
+```{r, results='hide', eval=FALSE, echo=TRUE}
+###SUPPLEMENTARY FIGURE 5 MASTER CODE
+
+##Panel A
+
+#Importing the Seurat object associated with the proG3 dataset
+
+pfams <- readRDS("pfams_proG3.RDS")
+
+#Making the clustree figure
+
+clustree(pfams@meta.data, prefix = "peaks_snn_res.") 
+
+##Panel B
+
+#Importing the BGC labels
+
+labels <- read.delim("pfam_annotation_total_proG3/labels.tsv", header=FALSE)
+colnames(labels)=c("BGC", "GCF")
+
+#Importing the biosynthetic class annotation associated with the proG3 dataset
+
+classes <- read.delim("biosynthetic_classes.tsv", header=FALSE)
+colnames(classes)=c("BGC","Biosynthetic_class")
+
+#Sorting classes
+
+classes$Biosynthetic_class=sapply(classes$Biosynthetic_class, function(x)
+  sub("saccharide", "Saccharide",x,fixed=TRUE))
+classes$Biosynthetic_class=sapply(classes$Biosynthetic_class, function(x)
+  sub("terpene", "Terpene",x,fixed=TRUE))
+classes$Biosynthetic_class=sapply(classes$Biosynthetic_class, function(x)
+  sub("NRPS", "NRP",x,fixed=TRUE))
+classes$Biosynthetic_class=sapply(classes$Biosynthetic_class, function(x)
+  sub("NRP;Polyketide", "NRP-PKS",x,fixed=TRUE))
+classes$Biosynthetic_class=sapply(classes$Biosynthetic_class, function(x)
+  sub("Polyketide", "PKS",x,fixed=TRUE))
+classes$Biosynthetic_class=sapply(classes$Biosynthetic_class, function(x)
+  sub("PKS;Saccharide", "Others",x,fixed=TRUE))
+classes$Biosynthetic_class=sapply(classes$Biosynthetic_class, function(x)
+  sub("RiPP;Terpene", "Others",x,fixed=TRUE))
+classes$Biosynthetic_class=sapply(classes$Biosynthetic_class, function(x)
+  sub("Unknown", "Others",x,fixed=TRUE))
+classes$Biosynthetic_class=sapply(classes$Biosynthetic_class, function(x)
+  sub("mixed", "Others",x,fixed=TRUE))
+classes$Biosynthetic_class=sapply(classes$Biosynthetic_class, function(x)
+  sub("other", "Others",x,fixed=TRUE))
+classes$Biosynthetic_class=sapply(classes$Biosynthetic_class, function(x)
+  sub("NRP;Saccharide", "Others",x,fixed=TRUE))
+classes$Biosynthetic_class=sapply(classes$Biosynthetic_class, function(x)
+  sub("PKS;Terpene", "Others",x,fixed=TRUE))
+classes$Biosynthetic_class=sapply(classes$Biosynthetic_class, function(x)
+  sub("NRP;Saccharide", "Others",x,fixed=TRUE))
+classes$Biosynthetic_class=sapply(classes$Biosynthetic_class, function(x)
+  sub("PKS;Terpene", "Others",x,fixed=TRUE))
+classes$Biosynthetic_class=sapply(classes$Biosynthetic_class, function(x)
+  sub("Alkaloid;Terpene", "Others",x,fixed=TRUE))
+classes$Biosynthetic_class=sapply(classes$Biosynthetic_class, function(x)
+  sub("Alkaloid;NRP-PKS", "Others",x,fixed=TRUE))
+classes$Biosynthetic_class=sapply(classes$Biosynthetic_class, function(x)
+  sub("Saccharide;Terpene", "Others",x,fixed=TRUE))
+
+#Importing the IGUA clustering of the proG3 dataset
+
+proG3_igua=read.delim('supplementary_table_11.tsv', header=TRUE)
+colnames(proG3_igua)[1]="BGC"
+
+#Attaching the class annotation to the IGUA clustering dataframe
+
+data=merge(proG3_igua, classes, by="BGC")
+
+#Creating a Majority count column
+
+df=data %>% 
+  add_count(gcf_id, Biosynthetic_class) %>% 
+  group_by(gcf_id) %>% 
+  mutate(Majority=Biosynthetic_class[n==max(n)][1]) %>% 
+  select(-n)
+
+#Merging to the labels
+
+data2=merge(labels, df, by="BGC")
+
+data3=data2[!duplicated(data2),]
+
+rownames(data3)=data3$BGC
+
+#Attaching biosynthetic class annotation with majority count column as metadata to the Seurat object
+
+meta_data=pfams@meta.data
+
+
+pfams=AddMetaData(pfams, metadata = data3)
+
+Idents(object = pfams) <- "Majority"
+
+#Creating the UMAP plot
+
+
+p17_5=DimPlot(pfams, label=FALSE, cols=c('Alkaloid' = "#EF6C00", 'NRP' = "#884EA0", 'Others' = "grey", 'PKS' = "#1E88E5", 'NRP-PKS' = "palegreen",
+            'RiPP' = "#FDD835", 'Saccharide' = "#EC407A", 'Terpene' = "#009688"),
+            alpha=0.5)
+
+p17_5
+
+```
+
+```{r, results='hide', eval=FALSE, echo=TRUE}
+###SUPPLEMENTARY FIGURE 6 MASTER CODE
+
+##Panel A
+
+#Importing the secretion systems Seurat object
+
+pfams_sec <- readRDS("pfams_secretion.RDS")
+
+#Creating clusterings for clustree
+
+res = seq.int(0.1, 0.9, 0.05) 
+for (i in res){
+  pfams_sec = FindClusters(object = pfams_sec, resolution = i, algorithm = 3)
+}
+
+#Plottting the clustree figure
+
+clustree(pfams_sec@meta.data, prefix = "peaks_snn_res.") 
+
+##Panel B - waiting for re-writing
+
+```
+
+```{r, results='hide', eval=FALSE, echo=TRUE}
+
+#Importing the secretion systems Seurat object
+
+pfams_sec <- readRDS("pfams_secretion.RDS")
+
+#Setting the colour palette
+
+precols = c("#15889C", "#ED496F", "#8E1382", "#FFB300", "#FF6F00", "#43A047",
+            "#2D62A3", "#1F7530", "#573794", "#28AAE1", "#870F0F", "#24b177",
+            "#DDDDDD", "#7DCEA0", "#85C1E9", "#EB984E", "#EAD9D5", "#03CD4A",
+            "#CDDC39", "#E0594B", "#C76CDE", "#8D6E63", "#486FF7", "#6300B5",
+            "#88E200", "#012824", "#0D3290", "#A347FB", "#54FC7A", "#EB1388",
+            "#B0978D", "#FE52CF", "#83F1F6", "#F1F847", "#2B1DFC", "#6C6F15", 
+            "#6CA05C", "#7788CD", "#F502F3", "#0DC290", "#FA0E03", "#3CAA0A",
+            "#BEFC8D", "#08F8EB", "#B1CD3F", "#D6A5FA", "#CE606C", "#AB1EBA",
+            "#6ECC9F", "#054DDC", "#854F49", "#F22B21", "#3A0E43", "#225805",
+            "#37D160", "#E4B974", "#A8BADE", "#47EDD1", "#F47A92", "#9106EB",
+            "#81AA20", "#D7FDFD", "#5DEB2E", "#F82745", "#6435E0", "#027FFE",
+            "#8E3101", "#16F648", "#1C15BC", "#8BE46E", "#8D6FA0", "#E68FC6",
+            "#058CA9", "#9E018A", "#BDFD0B", "#B22760", "#2BF49F", "#CB9348",
+            "#9D8303", "#C251A1", "#46ADAF", "#A3E3AF", "#22BB34", "#6EA3FA",
+            "#260374", "#1C3854", "#405D37", "#C21DF3", "#FCEA92", "#537F88",
+            "#FD4C18", "#F2D71E")
+
+#Running with default clustering threshold
+
+pfams_sec <- FindClusters(object = pfams_sec, verbose = FALSE, algorithm = 3)
+
+#Creating the UMAP plot
+
+DimPlot(object = pfams_sec, label = TRUE, cols=precols, alpha=0.5,
+        pt.size = 1, label.size = 6) + NoLegend()
+
+```
+
+```{r, results='hide', eval=FALSE, echo=TRUE}
+###SUPPLEMENTARY FIGURE 8 MASTER CODE
+
+##Panel A
+
+#Importing prophage Seurat object
+
+prophage=readRDS('pfams_prophage.RDS')
+
+#Running clustering at different thresholds
+
+res = seq.int(0.1, 0.9, 0.05) 
+for (i in res){
+  prophage = FindClusters(object = prophage, resolution = i, algorithm = 3)
+}
+
+#Making the clustree figure
+
+clustree(prophage@meta.data, prefix = "peaks_snn_res.") 
+
+##Panel B
+
+#Importing the prophage Seurat object
+
+pfams_pro = readRDS("pfams_prophage.RDS")
+
+#Setting the colour scheme
+
+precols = c("#15889C", "#ED496F", "#8E1382", "#FFB300", "#FF6F00", "#43A047",
+            "#2D62A3", "#1F7530", "#573794", "#28AAE1", "#870F0F", "#24b177",
+            "#DDDDDD", "#7DCEA0", "#85C1E9", "#EB984E", "#EAD9D5", "#03CD4A",
+            "#CDDC39", "#E0594B", "#C76CDE", "#8D6E63", "#486FF7", "#6300B5",
+            "#88E200", "#012824", "#0D3290", "#A347FB", "#54FC7A", "#EB1388",
+            "#B0978D", "#FE52CF", "#83F1F6", "#F1F847", "#2B1DFC", "#6C6F15", 
+            "#6CA05C", "#7788CD", "#F502F3", "#0DC290", "#FA0E03", "#3CAA0A",
+            "#BEFC8D", "#08F8EB", "#B1CD3F", "#D6A5FA", "#CE606C", "#AB1EBA",
+            "#6ECC9F", "#054DDC", "#854F49", "#F22B21", "#3A0E43", "#225805",
+            "#37D160", "#E4B974", "#A8BADE", "#47EDD1", "#F47A92", "#9106EB",
+            "#81AA20", "#D7FDFD", "#5DEB2E", "#F82745", "#6435E0", "#027FFE",
+            "#8E3101", "#16F648", "#1C15BC", "#8BE46E", "#8D6FA0", "#E68FC6",
+            "#058CA9", "#9E018A", "#BDFD0B", "#B22760", "#2BF49F", "#CB9348",
+            "#9D8303", "#C251A1", "#46ADAF", "#A3E3AF", "#22BB34", "#6EA3FA",
+            "#260374", "#1C3854", "#405D37", "#C21DF3", "#FCEA92", "#537F88",
+            "#FD4C18", "#F2D71E")
+
+#Importing and sorting the metadata
+
+prophage_metadata <- read.delim("prophage_metadata.tsv", header=TRUE)
+labels <- read.delim("pfam_annotation_prophage/labels.tsv", header=FALSE)
+colnames(labels)=c("prophage","GCF")
+colnames(prophage_metadata)[1]="prophage"
+metadata_prophage=merge(labels, prophage_metadata, by="prophage", all.x=TRUE)
+rownames(metadata_prophage)=metadata_prophage$prophage
+
+#Keeping the top 10 phyla
+
+top10 = metadata_prophage %>%
+  group_by(phylum) %>% 
+  summarise(n=n()) %>% 
+  top_n(11)
+
+#Modifying the metadata to keep only the top 10 phyla
+
+data3 = metadata_prophage %>% 
+  filter(phylum %in% top10$phylum)
+
+#Attaching the new metadata to the Seurat object
+
+pfams_3=AddMetaData(pfams_pro, metadata = data3)
+
+#Setting identity to phylum
+
+Idents(object = pfams_3) <- "phylum"
+
+
+#Creating the UMAP plot
+
+DimPlot(pfams_3, na.value = "white", raster=FALSE, cols = precols,
+        alpha = 0.5)
+
+
+```
+

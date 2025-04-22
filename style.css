@@ -1,0 +1,54 @@
+h2 {
+  text-align: center;
+  font-size: 22px;
+  font-family: Monospace;
+  font-weight: bold;
+}
+h1.title {
+  font-family: Monospace;
+  text-align: center;
+  font-weight: bold;
+  font-size: 26px;
+}
+h3 {
+  font-family: Monospace;
+  text-align: start;
+  font-weight: bold;
+  font-size: 40px;
+}
+p {
+  font-family: Times New Roman;
+  font-size: 16px;
+}
+h4 {
+  font-family: Times New Roman;
+  font-size: 18px;
+  font-style: italic;
+}
+#TOC {
+  color: black;
+  font-family: Times New Roman;
+  font-size: 16px;
+  background: #2A4765;
+  text-align: center;
+}
+.list-group-item.active, .list-group-item.active:focus, .list-group-item.active:hover {
+    background-color: #2A4765;
+}
+.hljs-number {
+color: #2A4765;
+}
+.hljs-comment {
+color:#73A790;
+font-style: italic;
+}
+.hljs-keyword {
+color: #D7B17C;
+font-weight: bold;
+}
+.hljs-string {
+color: #EABAB9;
+}
+.caption {
+  font-style: italic;
+}
