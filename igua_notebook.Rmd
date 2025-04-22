@@ -57,6 +57,9 @@ output:
 * `proG3_rep_sampling.R` was used to create the proGenomes3 samples used for speed and memory testing. This script uses the file `proGenomes3_specI_lineageGTDB.tab`, downloaded from https://progenomes.embl.de/download.cgi. 
 * `ìgua_benchmark_parameter.R` was used to generate the AMI, NRI, NMI, purity and GCF counts for the benchmarking done using the manually curated dataset. This script was re-used for the purity measurements calculated, and thus some lines of code are commented out depending on what was calculated. In its current state, the script creates the GCF dataframe. 
 * `strepto_sampling.py` was used to create the *Streptomyces* samples.
+* `umap_bgcs.py` was used to annotate Pfam domains among GCF representatives for the proG3 BGC dataset.
+* `umap_prophage.py` was used to annotate Pfam domains among GCF representatives for the prophage dataset.
+* `umap_secretion.py` was used to annotate Pfam domains among GCF representatives for the secretion systems dataset.
 
 The command used to run BiG-SCAPE (v1.1.5) on the benchmark dataset is shown below (only showing global mode). The `$variable` represented a list of the manually curated dataset BGC IDs, to only include those BGCs in the clustering.
 
