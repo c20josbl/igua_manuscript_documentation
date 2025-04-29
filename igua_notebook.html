@@ -1708,10 +1708,13 @@ library(gridExtra)
 library(ggsignif)
 library(Signac)
 library(Seurat)
-library(clustree)</code></pre>
+library(clustree)
+library(patchwork)</code></pre>
 <pre class="r"><code>###FIGURE 2 MASTER CODE
 
-# benchmark dataset
+##Panel B
+
+#Importing and fixing the benchmark dataset dataframe
 
 curated=read_excel(&quot;41589_2019_400_MOESM31_ESM.xlsx&quot;)
 curated=curated[-c(288,289,290,291,292,293,294,308,309,310),]
@@ -1735,13 +1738,13 @@ sep_curated=sep_curated[-temp1,]
 
 #Importing IGUA clustering at default settings
 
-benchmark=read.delim(paste0(&quot;average_0.80.tsv&quot;))
+benchmark=read.delim(paste0(&quot;supplementary_table_4.tsv&quot;))
 benchmark$cluster_id=strtrim(benchmark$cluster_id,10)
 benchmark=benchmark %&gt;%
   group_by(gcf_id) %&gt;%
   filter(n() &gt;=2)
-htgcf=data.frame(benchmark$cluster_id,benchmark$gcf_id)
-colnames(htgcf)=c(&quot;mibig&quot;,&quot;GCF&quot;)
+igua=data.frame(benchmark$cluster_id,benchmark$gcf_id)
+colnames(igua)=c(&quot;mibig&quot;,&quot;GCF&quot;)
 BGCs=c(&quot;BGC0000015&quot;, &quot;BGC0000095&quot;,&quot;BGC0000322&quot;,
        &quot;BGC0000462&quot;,&quot;BGC0000629&quot;,&quot;BGC0000875&quot;,
        &quot;BGC0000945&quot;, &quot;BGC0001081&quot;, &quot;BGC0001147&quot;,
@@ -1749,16 +1752,21 @@ BGCs=c(&quot;BGC0000015&quot;, &quot;BGC0000095&quot;,&quot;BGC0000322&quot;,
 b=length(BGCs)
 temp=0
 for (y in 1:b){
-  temp=c(temp,c(which(htgcf$mibig==BGCs[y])))
+  temp=c(temp,c(which(igua$mibig==BGCs[y])))
 }
-htgcf_f=htgcf[-temp,]
-merged_data=merge(sep_curated,htgcf_f,by=&quot;mibig&quot;, all.x = TRUE)
+igua_f=igua[-temp,]
+
+#Merging the two dataframes
+
+merged_data=merge(sep_curated,igua_f,by=&quot;mibig&quot;, all.x = TRUE)
 
 data2=merged_data %&gt;%
   group_by(group, GCF) %&gt;% 
   summarise(n=n()) 
 
 data2$row=row.names(data2)
+
+#Creating the biosynthetic class annotation
 
 ann_merge=data2 %&gt;% inner_join(ann_curated,
                                by=&quot;group&quot;)
@@ -1775,6 +1783,8 @@ ann_colors = list(
   Class = c(Alkaloids = &quot;#EF6C00&quot;, NRPs = &quot;#884EA0&quot;, `Other Hybrids` = &quot;#607D8B&quot;,
             Others = &quot;grey&quot;, Polyketides = &quot;#1E88E5&quot;, `Polyketides/NRPs` = &quot;palegreen&quot;,
             RiPPs = &quot;#FDD835&quot;, Saccharides = &quot;#EC407A&quot;, Terpenes = &quot;#009688&quot;))
+
+#Sorting the heatmap contingency table using a custom function
 
 contingency.table &lt;- table(merged_data$GCF, merged_data$group)
 my.truth &lt;- names(sort(table(merged_data$group), decreasing = T))
@@ -1815,8 +1825,12 @@ final &lt;- final[match(order.big, rownames(final)),]
 order.gecco &lt;- yeet(mymat = t(final), ref = rownames(final))
 final &lt;- final[,match(order.gecco, colnames(final))]
 
+#Setting the colour palette with 0 set to a charcoal colour
+
 bgc_palette &lt;- hcl.colors(50, &quot;YlGnBu&quot;)
 bgc_palette[1] &lt;- &quot;#171717&quot;
+
+#Creating the annotated heatmap
 
 p6h &lt;- pheatmap(t(final), color = bgc_palette, border_color = F,cluster_rows = F,
                       cluster_cols = F,
@@ -1825,14 +1839,19 @@ p6h &lt;- pheatmap(t(final), color = bgc_palette, border_color = F,cluster_rows 
                       heatmap_legend_param = list(title = &quot;# of BGCs&quot;, at = c(0,5,10,15),
                                                   direction = &quot;vertical&quot;))
 
+#Converting the heatmap to a ggplot object
 
-# add_heatmap(p6h, p6h, direction = c(&quot;horizontal&quot;, &quot;vertical&quot;))
 p6 = as.ggplot(p6h)
+
+##Panel A
+
+#Setting the colour palette and importing the ARI data
 
 bright &lt;- color(&quot;bright&quot;)
 
 ARI_benchmark_data &lt;- read.csv(&quot;ARI_benchmark_data.tsv&quot;, sep=&quot;&quot;)
 
+#Making the ARI line plot
 
 p5=ggplot(ARI_benchmark_data,aes(x=distance,y=ARIs,group=group, color=group))+
   geom_line(lwd=1)+ylab(&quot;ARI&quot;)+xlab(&quot;Clustering distance&quot;)+
@@ -1851,6 +1870,10 @@ p5=ggplot(ARI_benchmark_data,aes(x=distance,y=ARIs,group=group, color=group))+
         axis.text = element_text(size=13.5),
         legend.text = element_text(size=13.5),
         legend.title = element_text(size=15))
+
+##Panels C and D
+
+#Creating the dataframe
 
 sample=c(rep(c(1:5),9))
 method=c(rep(&quot;BiG-SCAPE&quot;,5),rep(&quot;IGUA&quot;,5), rep(&quot;BiG-SLiCE&quot;,5),
@@ -1880,6 +1903,7 @@ time=c(1560, 1740, 1560, 1560, 1560,
 df=data.frame(sample,method,cpu,time, memory)
 df$cpu=as.factor(df$cpu)
 
+#Making the barplots
 
 p13=ggplot(df, aes(x=cpu, y=time, fill=method))+
   geom_bar(stat = &quot;summary&quot;,
@@ -1953,7 +1977,8 @@ p14=ggplot(df, aes(x=cpu, y=memory, fill=method))+
     size = 0.7
   )
 
-# legend inside on panel A
+#Adjusting some figure elements to make a better panel figure
+
 p5 &lt;- p5 +
   theme(legend.position = &quot;inside&quot;,
         legend.position.inside = c(0.25, 0.4),
@@ -1965,13 +1990,14 @@ p13 &lt;- p13 + theme(legend.position=&quot;none&quot;)
 p14 &lt;- p14 + theme(legend.background = element_rect(fill = NA),
                    legend.text = element_text(size = 11.5))
                    
-
-library(ggpubr)
+#Arranging the panels
 
 figure2_arrange &lt;- ggarrange(
   ggarrange(p5,p13,p14, align = &quot;hv&quot;, nrow = 3, ncol = 1, labels = c(&quot;A&quot;, &quot;C&quot;, &quot;D&quot;), heights = c(3,2,2)),
   p6, align = &quot;hv&quot;, ncol = 2, widths = c(2,5), labels = c(&quot;A&quot;,&quot;B&quot;)
 )
+
+#Saving the plot
 
 ggsave(&quot;figure2.svg&quot;, plot = figure2_arrange, device = &quot;svg&quot;, dpi = 300, height = 14.4, width = 16.8)</code></pre>
 <pre class="r"><code>###FIGURE 3 MASTER CODE
@@ -2316,20 +2342,19 @@ bgcs_area_size=ggplot() +
 
 #arranging all plots in a panel
 
+fig3_p &lt;- (
+           ((bgcs_hist_GCs + sec_hist_GCs + pro_hist_GCs) +
+              plot_layout(axis_titles = &quot;collect_y&quot;)) /
+           ((bgcs_area_size + sec_area_size + pro_area_size) + plot_layout(axis_titles = &quot;collect_y&quot;)) /
+           ((bgcs_umap[[1]] + sec_umap[[1]] + pro_umap[[1]]) + plot_layout(axis_titles = &quot;collect_y&quot;)) /
+           ((bgcs_hist_phyla + sec_hist_phyla + pro_hist_phyla) + plot_layout(axis_titles = &quot;collect_y&quot;))
+           ) + 
+            plot_layout(heights = c(0.5,0.5,2,0.5)) +
+            plot_annotation(tag_levels =
+                              list(c(&#39;A&#39;, &#39;E&#39;, &#39;I&#39;, &#39;B&#39;, &#39;F&#39;, &#39;J&#39;, &#39;C&#39;, &#39;J&#39;, &#39;K&#39;, &#39;D&#39;, &#39;H&#39;, &#39;L&#39;))) +
+            theme(plot.tag = element_text(face = &#39;bold&#39;))
 
-ggarrange(
-  ggarrange(bgcs_hist_GCs, sec_hist_GCs, pro_hist_GCs, align=&quot;hv&quot;,
-            ncol = 3, labels = c(&quot;A&quot;, &quot;E&quot;, &quot;I&quot;)),
-  ggarrange(bgcs_area_size, sec_area_size, pro_area_size, align=&quot;hv&quot;,
-            ncol = 3, labels = c(&quot;B&quot;, &quot;F&quot;, &quot;J&quot;)),
-  ggarrange(bgcs_umap,sec_umap,pro_umap,
-            align = &quot;hv&quot;, ncol = 3,
-            labels = c(&quot;C&quot;, &quot;G&quot;, &quot;K&quot;)),
-  ggarrange(bgcs_hist_phyla, sec_hist_phyla, pro_hist_phyla,
-            align = &quot;hv&quot;, ncol = 3,
-            labels = c(&quot;D&quot;, &quot;H&quot;,&quot;L&quot;)),
-  align = &quot;hv&quot;, heights = c(0.5,0.65,2,0.5), nrow = 4
-)</code></pre>
+ggsave(&quot;figure3.svg&quot;, plot = fig3_p, device = &quot;svg&quot;, dpi = 300, units = &quot;px&quot;, height = 5950, width = 8050)</code></pre>
 <pre class="r"><code>###SUPPLEMENTARY FIGURE 1 MASTER CODE
 
 #Setting the colour palette
