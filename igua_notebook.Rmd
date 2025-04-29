@@ -111,6 +111,275 @@ library(clustree)
 
 ```
 
+```{r, eval=FALSE, echo=TRUE, results='hide'}
+###FIGURE 2 MASTER CODE
+
+# benchmark dataset
+
+curated=read_excel("41589_2019_400_MOESM31_ESM.xlsx")
+curated=curated[-c(288,289,290,291,292,293,294,308,309,310),]
+sep_curated=curated %>%
+  separate_rows(`MIBiG accession`, sep = ",")
+sep_curated$`MIBiG accession`=str_trim(sep_curated$`MIBiG accession`, side=c("both"))
+sep_curated=data.frame(sep_curated$`MIBiG accession`,sep_curated$Group)
+colnames(sep_curated)=c("mibig","group")
+ann_curated=data.frame(curated$Class, curated$Group)
+colnames(ann_curated)=c("class","group")
+BGCs=c("BGC0000015", "BGC0000095","BGC0000322",
+       "BGC0000462","BGC0000629","BGC0000875",
+       "BGC0000945", "BGC0001081", "BGC0001147",
+       "BGC0001208", "BGC0001232", "BGC0001347")
+b=length(BGCs)
+temp1=0
+for (y in 1:b){
+  temp1=c(temp1,c(which(sep_curated$mibig==BGCs[y])))
+}
+sep_curated=sep_curated[-temp1,]
+
+#Importing IGUA clustering at default settings
+
+benchmark=read.delim(paste0("average_0.80.tsv"))
+benchmark$cluster_id=strtrim(benchmark$cluster_id,10)
+benchmark=benchmark %>%
+  group_by(gcf_id) %>%
+  filter(n() >=2)
+htgcf=data.frame(benchmark$cluster_id,benchmark$gcf_id)
+colnames(htgcf)=c("mibig","GCF")
+BGCs=c("BGC0000015", "BGC0000095","BGC0000322",
+       "BGC0000462","BGC0000629","BGC0000875",
+       "BGC0000945", "BGC0001081", "BGC0001147",
+       "BGC0001208", "BGC0001232", "BGC0001347")
+b=length(BGCs)
+temp=0
+for (y in 1:b){
+  temp=c(temp,c(which(htgcf$mibig==BGCs[y])))
+}
+htgcf_f=htgcf[-temp,]
+merged_data=merge(sep_curated,htgcf_f,by="mibig", all.x = TRUE)
+
+data2=merged_data %>%
+  group_by(group, GCF) %>% 
+  summarise(n=n()) 
+
+data2$row=row.names(data2)
+
+ann_merge=data2 %>% inner_join(ann_curated,
+                               by="group")
+
+ann_merge=ann_merge[!duplicated(ann_merge$row),]
+ann_row=data.frame(ann_merge$group,ann_merge$class)
+ann_row=ann_row[!duplicated(ann_row$ann_merge.group),]
+row.names(ann_row)=ann_row$ann_merge.group
+ann_row2=data.frame(ann_row$ann_merge.class)
+row.names(ann_row2)=row.names(ann_row)
+colnames(ann_row2)=c("Class")
+
+ann_colors = list(
+  Class = c(Alkaloids = "#EF6C00", NRPs = "#884EA0", `Other Hybrids` = "#607D8B",
+            Others = "grey", Polyketides = "#1E88E5", `Polyketides/NRPs` = "palegreen",
+            RiPPs = "#FDD835", Saccharides = "#EC407A", Terpenes = "#009688"))
+
+contingency.table <- table(merged_data$GCF, merged_data$group)
+my.truth <- names(sort(table(merged_data$group), decreasing = T))
+gecco.clusters <- names(sort(table(merged_data$GCF), decreasing = T))
+yeet <- function(mymat, ref){
+  find.clusters <- c()
+  used.clusters <-c()
+  # loop through reference list
+  for (i in 1:length(ref)){
+    clus <- ref[i]
+    # take the column of the contintingency table that matches the current reference GCF
+    # finds the row that yields the GCF with maximum overlap
+    # if there are ties, R takes the first one
+    clus.bgcs <- rownames(mymat)[which.max(mymat[,which(colnames(mymat)==clus)])]
+    # if that particular maximum GCF hasn't been included yet...
+    # (this is done to deal with ties)
+    if (!(clus.bgcs%in%used.clusters)){
+      # append the maximum GCF to our final list of clusters, as well as out "used" GCF list
+      find.clusters <- c(find.clusters, clus.bgcs)
+      used.clusters <- c(used.clusters, clus.bgcs)
+    }
+  }
+  for (i in 1:length(rownames(mymat))){
+    clus.missing <- rownames(mymat)[i]
+    # if the GCF isn't included in our final list...
+    if (!(clus.missing%in%used.clusters)){
+      # add it
+      used.clusters <- c(used.clusters, clus.missing)
+      find.clusters <- c(find.clusters, clus.missing)
+    }
+  }
+  # return ordered GCFs
+  return(find.clusters)
+}
+order.big <- yeet(mymat = contingency.table, ref = my.truth)
+final <- contingency.table
+final <- final[match(order.big, rownames(final)),]
+order.gecco <- yeet(mymat = t(final), ref = rownames(final))
+final <- final[,match(order.gecco, colnames(final))]
+
+bgc_palette <- hcl.colors(50, "YlGnBu")
+bgc_palette[1] <- "#171717"
+
+p6h <- pheatmap(t(final), color = bgc_palette, border_color = F,cluster_rows = F,
+                      cluster_cols = F,
+                      show_colnames = FALSE,fontsize = 8, annotation_row = ann_row2,
+                      annotation_colors = ann_colors, annotation_names_row = FALSE,
+                      heatmap_legend_param = list(title = "# of BGCs", at = c(0,5,10,15),
+                                                  direction = "vertical"))
+
+
+# add_heatmap(p6h, p6h, direction = c("horizontal", "vertical"))
+p6 = as.ggplot(p6h)
+
+bright <- color("bright")
+
+ARI_benchmark_data <- read.csv("ARI_benchmark_data.tsv", sep="")
+
+
+p5=ggplot(ARI_benchmark_data,aes(x=distance,y=ARIs,group=group, color=group))+
+  geom_line(lwd=1)+ylab("ARI")+xlab("Clustering distance")+
+  theme_classic()+
+  scale_color_manual(values=c(bright(7)))+  
+  labs(color="IGUA Linkage method")+
+  # guides(color=guide_legend(ncol=2)) +
+  new_scale_color()+
+  geom_hline(aes(yintercept=0.7725007,
+                 color="glocal"), linetype=2)+
+  geom_hline(aes(yintercept=0.7520675,
+                 color="global"), linetype=3)+
+  scale_color_manual(values=c("black", "black"))+
+  labs(color="BiG-SCAPE")+
+  theme(axis.title = element_text(size=15),
+        axis.text = element_text(size=13.5),
+        legend.text = element_text(size=13.5),
+        legend.title = element_text(size=15))
+
+sample=c(rep(c(1:5),9))
+method=c(rep("BiG-SCAPE",5),rep("IGUA",5), rep("BiG-SLiCE",5),
+         rep("BiG-SCAPE",5), rep("IGUA",5), rep("BiG-SLiCE",5), rep("BiG-SCAPE",5),
+         rep("IGUA",5), rep("BiG-SLiCE",5))
+BGCs=c(rep(c(11478, 11908, 11214, 
+             11227, 11144),6))
+cpu=c(rep(1,15), rep(8,15), rep(28,15))
+memory=c(18.035, 18.081, 19.118, 20.700, 19.834,
+         2.046, 2.120, 2.025, 2.014, 2.004,
+         3.037, 2.933, 3.009, 2.977, 3.077,
+         58.227, 58.638, 55.205, 56.161, 52.465,
+         2.243, 2.313, 2.221, 2.211, 2.198,
+         8.779, 8.278, 8.893, 8.860, 8.908,
+         168.613, 114.552, 160.314, 162.163, 152.919,
+         2.727, 2.801, 2.703, 2.685, 2.682,
+         14.811, 14.184, 14.980, 15.041, 14.695)
+time=c(1560, 1740, 1560, 1560, 1560,
+       34.85, 38.32, 30.8, 32.25, 32.97,
+       331, 346, 320, 313, 317,
+       362, 331, 353, 312, 316,
+       4.83, 5.18, 4.75, 4.52, 4.58,
+       54.233, 56.267, 52.45, 51.05, 51.917,
+       244, 267, 265, 235, 212, 
+       1.98, 2.12, 1.98, 1.9, 2.08,
+       24.233, 25.783, 23.817, 23.45, 23.717)
+df=data.frame(sample,method,cpu,time, memory)
+df$cpu=as.factor(df$cpu)
+
+
+p13=ggplot(df, aes(x=cpu, y=time, fill=method))+
+  geom_bar(stat = "summary",
+           position = "dodge",
+           fun=mean)+
+  geom_point(aes(y=time, group=method),
+             stat="identity", position=position_dodge(width=0.9),
+             pch=1, size=2, show.legend = FALSE)+
+  theme_classic()+
+  theme(legend.title = element_blank(),
+        axis.title = element_text(size=15),
+        legend.text = element_text(size=13.5),
+        legend.position="inside",
+        legend.justification.inside = c(0.98,0.98),
+        axis.text = element_text(size=13.5))+
+  ylab("Real time (min)")+
+  xlab("CPUs")+
+  scale_fill_manual(values=c("#33BBEE","#EE3377","#009988"))+
+  geom_signif(
+    y_position = c(1900, 1800), xmin = c(0.70, 1), xmax = c(1.25, 1.25),
+    annotation = c("x47.2", "x9.6"), tip_length = 0,
+    textsize = 3,
+    size = 0.7
+  )+
+  geom_signif(
+    y_position = c(600, 500), xmin = c(1.71, 2), xmax = c(2.285, 2.285),
+    annotation = c("x70.2", "x11.1"), tip_length = 0,
+    textsize = 3,
+    size = 0.7
+  )+
+  geom_signif(
+    y_position = c(550, 450), xmin = c(2.71, 3.02), xmax = c(3.29, 3.29),
+    annotation = c("x121.6", "x12.0"), tip_length = 0,
+    textsize = 3,
+    size = 0.7
+  )
+
+p14=ggplot(df, aes(x=cpu, y=memory, fill=method))+
+  geom_bar(stat = "summary",
+           position = "dodge",
+           fun=mean)+
+  geom_point(aes(y=memory, group=method),
+             stat="identity", position=position_dodge(width=0.9),
+             pch=1, size=2, show.legend = FALSE)+
+  theme_classic()+
+  theme(legend.title = element_blank(),
+        axis.title = element_text(size=15),
+        legend.text = element_text(size=13.5),
+        legend.position="inside",
+        legend.justification.inside = c(0.08,0.98),
+        axis.text = element_text(size=13.5))+
+  ylab("Peak RSS (Gb)")+
+  xlab("CPUs")+
+  scale_fill_manual(values=c("#33BBEE","#EE3377","#009988"))+
+  geom_signif(
+    y_position = c(50, 40), xmin = c(0.70, 1), xmax = c(1.25, 1.25),
+    annotation = c("x9.4", "x1.5"), tip_length = 0,
+    textsize = 3,
+    size = 0.7
+  )+
+  geom_signif(
+    y_position = c(80, 70), xmin = c(1.71, 2), xmax = c(2.285, 2.285),
+    annotation = c("x25.1", "x3.9"), tip_length = 0,
+    textsize = 3,
+    size = 0.7
+  )+
+  geom_signif(
+    y_position = c(190, 180), xmin = c(2.71, 3.02), xmax = c(3.29, 3.29),
+    annotation = c("x55.8", "x5.4"), tip_length = 0,
+    textsize = 3,
+    size = 0.7
+  )
+
+# legend inside on panel A
+p5 <- p5 +
+  theme(legend.position = "inside",
+        legend.position.inside = c(0.25, 0.4),
+        legend.background = element_rect(fill = NA),
+        legend.text = element_text(size = 11.5),
+        legend.title = element_text(size = 11.5, face = "bold"))
+
+p13 <- p13 + theme(legend.position="none")
+p14 <- p14 + theme(legend.background = element_rect(fill = NA),
+                   legend.text = element_text(size = 11.5))
+                   
+
+library(ggpubr)
+
+figure2_arrange <- ggarrange(
+  ggarrange(p5,p13,p14, align = "hv", nrow = 3, ncol = 1, labels = c("A", "C", "D"), heights = c(3,2,2)),
+  p6, align = "hv", ncol = 2, widths = c(2,5), labels = c("A","B")
+)
+
+ggsave("figure2.svg", plot = figure2_arrange, device = "svg", dpi = 300, height = 14.4, width = 16.8)
+```
+
+
 
 ```{r, results='hide', eval=FALSE, echo=TRUE}
 ###FIGURE 3 MASTER CODE
