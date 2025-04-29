@@ -237,7 +237,7 @@ bgc_palette[1] <- "#171717"
 
 p6h <- pheatmap(t(final), color = bgc_palette, border_color = F,cluster_rows = F,
                       cluster_cols = F,
-                      show_colnames = FALSE,fontsize = 8, annotation_row = ann_row2,
+                      show_colnames = FALSE,fontsize = 6, annotation_row = ann_row2,
                       annotation_colors = ann_colors, annotation_names_row = FALSE,
                       heatmap_legend_param = list(title = "# of BGCs", at = c(0,5,10,15),
                                                   direction = "vertical"))
