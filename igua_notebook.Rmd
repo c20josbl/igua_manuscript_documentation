@@ -1,6 +1,6 @@
 ---
 title: ""
-date: "2024-02-26"
+date: ""
 output: 
   html_document:
     toc: true
@@ -750,19 +750,22 @@ bgcs_area_size=ggplot() +
 
 #arranging all plots in a panel
 
-fig3_p <- (
-           ((bgcs_hist_GCs + sec_hist_GCs + pro_hist_GCs) +
-              plot_layout(axis_titles = "collect_y")) /
-           ((bgcs_area_size + sec_area_size + pro_area_size) + plot_layout(axis_titles = "collect_y")) /
-           ((bgcs_umap[[1]] + sec_umap[[1]] + pro_umap[[1]]) + plot_layout(axis_titles = "collect_y")) /
-           ((bgcs_hist_phyla + sec_hist_phyla + pro_hist_phyla) + plot_layout(axis_titles = "collect_y"))
-           ) + 
-            plot_layout(heights = c(0.5,0.5,2,0.5)) +
-            plot_annotation(tag_levels =
-                              list(c('A', 'E', 'I', 'B', 'F', 'J', 'C', 'J', 'K', 'D', 'H', 'L'))) +
-            theme(plot.tag = element_text(face = 'bold'))
+fig_3=ggarrange(
+  ggarrange(bgcs_hist_GCs, sec_hist_GCs, pro_hist_GCs, align="hv",
+            ncol = 3, labels = c("A1", "B1", "C1"), label.y = 1, vjust = 1.3, hjust = -0.1),
+  ggarrange(bgcs_area_size, sec_area_size, pro_area_size, align="hv",
+            ncol = 3, labels = c("A2", "B2", "C2"), label.y = 1.08, vjust = 1, hjust = -0.1),
+  ggarrange(bgcs_umap,sec_umap,pro_umap,
+            align = "hv", ncol = 3,
+            labels = c("A3", "B3", "C3"),label.y = 1, vjust = 1.3, hjust = -0.1),
+  ggarrange(bgcs_hist_phyla, sec_hist_phyla, pro_hist_phyla,
+            align = "hv", ncol = 3,
+            labels = c("A4", "B4","C4"), label.y = 1, vjust = 1.3, hjust = -0.1),
+  align = "hv", heights = c(0.5,0.5,2,0.5), nrow = 4
+)
+ggsave("figure3.png", plot = fig_3, device = "png", dpi = 350, height = 17, width = 23)
 
-ggsave("figure3.svg", plot = fig3_p, device = "svg", dpi = 300, units = "px", height = 5950, width = 8050)
+ggsave("figure3.svg", plot = fig_3, device = "svg", dpi = 350, height = 17, width = 23)
 
 ```
 
