@@ -45,6 +45,7 @@ output:
 * `pfam_annotation_total_proG3/labels.tsv` - labels associated with the Pfam annotation of the proG3 dataset
 * `biosynthetic_classes.tsv` - the biosynthetic class annotation of the BGCs from the proG3 dataset
 * `pfam_annotation_prophage/labels.tsv` - labels associated with the Pfam annotation of the prophage dataset
+* `pfam_annotation_secretion_systems/labels.tsv` - labels associated with the Pfam annotation of the secretion system dataset
 
 ## Seurat objects
 
@@ -1306,11 +1307,69 @@ for (i in res){
 
 clustree(pfams_sec@meta.data, prefix = "peaks_snn_res.") 
 
-##Panel B - waiting for re-writing
+##Panel B
+
+#Importing the secretion systems Seurat object
+
+pfams_sec <- readRDS("pfams_secretion.RDS")
+
+#Setting the colour palette
+
+precols = c("#15889C", "#ED496F", "#8E1382", "#FFB300", "#FF6F00", "#43A047",
+            "#2D62A3", "#1F7530", "#573794", "#28AAE1", "#870F0F", "#24b177",
+            "#DDDDDD", "#7DCEA0", "#85C1E9", "#EB984E", "#EAD9D5", "#03CD4A",
+            "#CDDC39", "#E0594B", "#C76CDE", "#8D6E63", "#486FF7", "#6300B5",
+            "#88E200", "#012824", "#0D3290", "#A347FB", "#54FC7A", "#EB1388",
+            "#B0978D", "#FE52CF", "#83F1F6", "#F1F847", "#2B1DFC", "#6C6F15", 
+            "#6CA05C", "#7788CD", "#F502F3", "#0DC290", "#FA0E03", "#3CAA0A",
+            "#BEFC8D", "#08F8EB", "#B1CD3F", "#D6A5FA", "#CE606C", "#AB1EBA",
+            "#6ECC9F", "#054DDC", "#854F49", "#F22B21", "#3A0E43", "#225805",
+            "#37D160", "#E4B974", "#A8BADE", "#47EDD1", "#F47A92", "#9106EB",
+            "#81AA20", "#D7FDFD", "#5DEB2E", "#F82745", "#6435E0", "#027FFE",
+            "#8E3101", "#16F648", "#1C15BC", "#8BE46E", "#8D6FA0", "#E68FC6",
+            "#058CA9", "#9E018A", "#BDFD0B", "#B22760", "#2BF49F", "#CB9348",
+            "#9D8303", "#C251A1", "#46ADAF", "#A3E3AF", "#22BB34", "#6EA3FA",
+            "#260374", "#1C3854", "#405D37", "#C21DF3", "#FCEA92", "#537F88",
+            "#FD4C18", "#F2D71E")
+
+#Importing and merging the files
+
+secretion_metadata <- read.delim("single_locus_clusters_renamed.tsv", header=FALSE)
+sec_igua=read.delim('supplementary_table_13.tsv', header=TRUE)
+labels_2 <- read.delim("pfam_annotation_secretion_systems/labels.tsv", header=FALSE)
+
+colnames(sec_igua)[1]="secretion"
+colnames(labels_2)=c("secretion","gcf_id")
+colnames(secretion_metadata)=c("contig_id","secretion","start","end","major_secretion_system_type",
+                                    "minor_secretion_system_type","NCBI_nucleotide_accession")
+
+metadata_igua=merge(secretion_metadata, sec_igua, by="secretion")
+
+#Creating a majority-class column
+
+metadata_igua=metadata_igua %>% 
+  add_count(gcf_id, major_secretion_system_type) %>% 
+  group_by(gcf_id) %>% 
+  mutate(Majority=major_secretion_system_type[n==max(n)][1]) %>% 
+  select(-n)
+
+metadata_secretion=merge(labels_2, metadata_igua, by="secretion", all.x=TRUE)
+
+row.names(metadata_secretion)=metadata_secretion$secretion
+
+#Attaching dataframe as metadata
+
+pfams_sec=AddMetaData(pfams_sec, metadata = metadata_secretion)
+
+#Creating the plot
+
+DimPlot(object = pfams_sec, label = FALSE, cols=precols, alpha=0.5,
+        group.by = "Majority", pt.size = 1)
 
 ```
 
 ```{r, results='hide', eval=FALSE, echo=TRUE}
+###SUPPLEMENTARY FIGURE 7 MASTER CODE
 
 #Importing the secretion systems Seurat object
 

@@ -1632,6 +1632,8 @@ associated with the Pfam annotation of the proG3 dataset</li>
 annotation of the BGCs from the proG3 dataset</li>
 <li><code>pfam_annotation_prophage/labels.tsv</code> - labels associated
 with the Pfam annotation of the prophage dataset</li>
+<li><code>pfam_annotation_secretion_systems/labels.tsv</code> - labels
+associated with the Pfam annotation of the secretion system dataset</li>
 </ul>
 </div>
 <div id="seurat-objects" class="section level2">
@@ -2874,8 +2876,67 @@ for (i in res){
 
 clustree(pfams_sec@meta.data, prefix = &quot;peaks_snn_res.&quot;) 
 
-##Panel B - waiting for re-writing</code></pre>
-<pre class="r"><code>#Importing the secretion systems Seurat object
+##Panel B
+
+#Importing the secretion systems Seurat object
+
+pfams_sec &lt;- readRDS(&quot;pfams_secretion.RDS&quot;)
+
+#Setting the colour palette
+
+precols = c(&quot;#15889C&quot;, &quot;#ED496F&quot;, &quot;#8E1382&quot;, &quot;#FFB300&quot;, &quot;#FF6F00&quot;, &quot;#43A047&quot;,
+            &quot;#2D62A3&quot;, &quot;#1F7530&quot;, &quot;#573794&quot;, &quot;#28AAE1&quot;, &quot;#870F0F&quot;, &quot;#24b177&quot;,
+            &quot;#DDDDDD&quot;, &quot;#7DCEA0&quot;, &quot;#85C1E9&quot;, &quot;#EB984E&quot;, &quot;#EAD9D5&quot;, &quot;#03CD4A&quot;,
+            &quot;#CDDC39&quot;, &quot;#E0594B&quot;, &quot;#C76CDE&quot;, &quot;#8D6E63&quot;, &quot;#486FF7&quot;, &quot;#6300B5&quot;,
+            &quot;#88E200&quot;, &quot;#012824&quot;, &quot;#0D3290&quot;, &quot;#A347FB&quot;, &quot;#54FC7A&quot;, &quot;#EB1388&quot;,
+            &quot;#B0978D&quot;, &quot;#FE52CF&quot;, &quot;#83F1F6&quot;, &quot;#F1F847&quot;, &quot;#2B1DFC&quot;, &quot;#6C6F15&quot;, 
+            &quot;#6CA05C&quot;, &quot;#7788CD&quot;, &quot;#F502F3&quot;, &quot;#0DC290&quot;, &quot;#FA0E03&quot;, &quot;#3CAA0A&quot;,
+            &quot;#BEFC8D&quot;, &quot;#08F8EB&quot;, &quot;#B1CD3F&quot;, &quot;#D6A5FA&quot;, &quot;#CE606C&quot;, &quot;#AB1EBA&quot;,
+            &quot;#6ECC9F&quot;, &quot;#054DDC&quot;, &quot;#854F49&quot;, &quot;#F22B21&quot;, &quot;#3A0E43&quot;, &quot;#225805&quot;,
+            &quot;#37D160&quot;, &quot;#E4B974&quot;, &quot;#A8BADE&quot;, &quot;#47EDD1&quot;, &quot;#F47A92&quot;, &quot;#9106EB&quot;,
+            &quot;#81AA20&quot;, &quot;#D7FDFD&quot;, &quot;#5DEB2E&quot;, &quot;#F82745&quot;, &quot;#6435E0&quot;, &quot;#027FFE&quot;,
+            &quot;#8E3101&quot;, &quot;#16F648&quot;, &quot;#1C15BC&quot;, &quot;#8BE46E&quot;, &quot;#8D6FA0&quot;, &quot;#E68FC6&quot;,
+            &quot;#058CA9&quot;, &quot;#9E018A&quot;, &quot;#BDFD0B&quot;, &quot;#B22760&quot;, &quot;#2BF49F&quot;, &quot;#CB9348&quot;,
+            &quot;#9D8303&quot;, &quot;#C251A1&quot;, &quot;#46ADAF&quot;, &quot;#A3E3AF&quot;, &quot;#22BB34&quot;, &quot;#6EA3FA&quot;,
+            &quot;#260374&quot;, &quot;#1C3854&quot;, &quot;#405D37&quot;, &quot;#C21DF3&quot;, &quot;#FCEA92&quot;, &quot;#537F88&quot;,
+            &quot;#FD4C18&quot;, &quot;#F2D71E&quot;)
+
+#Importing and merging the files
+
+secretion_metadata &lt;- read.delim(&quot;single_locus_clusters_renamed.tsv&quot;, header=FALSE)
+sec_igua=read.delim(&#39;supplementary_table_13.tsv&#39;, header=TRUE)
+labels_2 &lt;- read.delim(&quot;pfam_annotation_secretion_systems/labels.tsv&quot;, header=FALSE)
+
+colnames(sec_igua)[1]=&quot;secretion&quot;
+colnames(labels_2)=c(&quot;secretion&quot;,&quot;gcf_id&quot;)
+colnames(secretion_metadata)=c(&quot;contig_id&quot;,&quot;secretion&quot;,&quot;start&quot;,&quot;end&quot;,&quot;major_secretion_system_type&quot;,
+                                    &quot;minor_secretion_system_type&quot;,&quot;NCBI_nucleotide_accession&quot;)
+
+metadata_igua=merge(secretion_metadata, sec_igua, by=&quot;secretion&quot;)
+
+#Creating a majority-class column
+
+metadata_igua=metadata_igua %&gt;% 
+  add_count(gcf_id, major_secretion_system_type) %&gt;% 
+  group_by(gcf_id) %&gt;% 
+  mutate(Majority=major_secretion_system_type[n==max(n)][1]) %&gt;% 
+  select(-n)
+
+metadata_secretion=merge(labels_2, metadata_igua, by=&quot;secretion&quot;, all.x=TRUE)
+
+row.names(metadata_secretion)=metadata_secretion$secretion
+
+#Attaching dataframe as metadata
+
+pfams_sec=AddMetaData(pfams_sec, metadata = metadata_secretion)
+
+#Creating the plot
+
+DimPlot(object = pfams_sec, label = FALSE, cols=precols, alpha=0.5,
+        group.by = &quot;Majority&quot;, pt.size = 1)</code></pre>
+<pre class="r"><code>###SUPPLEMENTARY FIGURE 7 MASTER CODE
+
+#Importing the secretion systems Seurat object
 
 pfams_sec &lt;- readRDS(&quot;pfams_secretion.RDS&quot;)
 
