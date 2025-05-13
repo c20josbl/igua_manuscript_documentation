@@ -1560,6 +1560,13 @@ border-radius: 0px;
 </div>
 
 
+<div id="zenodo-repository" class="section level2">
+<h2>Zenodo repository</h2>
+<p>All files (.tsv/.RDS) referenced in this notebook can be downloaded
+from <a href="https://zenodo.org/uploads/15394038" class="uri">https://zenodo.org/uploads/15394038</a>. Please note that
+for the supplementary tables, it is assumed that the headers have been
+removed prior to importing the file in R.</p>
+</div>
 <div id="supplementary-tables" class="section level2">
 <h2>Supplementary tables</h2>
 <ul>
@@ -1625,15 +1632,16 @@ settings for IGUA</li>
 for each clustering distance and linkage method tested when optimising
 default settings for IGUA</li>
 <li><code>41589_2019_400_MOESM31_ESM.xlsx</code> - original Excel file
-from the BiG-SCAPE paper detailing their manually curated dataset</li>
-<li><code>pfam_annotation_total_proG3/labels.tsv</code> - labels
-associated with the Pfam annotation of the proG3 dataset</li>
+from the BiG-SCAPE paper detailing their manually curated dataset. This
+can be downloaded from <a href="https://static-content.springer.com/esm/art%3A10.1038%2Fs41589-019-0400-9/MediaObjects/41589_2019_400_MOESM31_ESM.xlsx" class="uri">https://static-content.springer.com/esm/art%3A10.1038%2Fs41589-019-0400-9/MediaObjects/41589_2019_400_MOESM31_ESM.xlsx</a>.</li>
+<li><code>proG3_labels.tsv</code> - labels associated with the Pfam
+annotation of the proG3 dataset</li>
 <li><code>biosynthetic_classes.tsv</code> - the biosynthetic class
 annotation of the BGCs from the proG3 dataset</li>
-<li><code>pfam_annotation_prophage/labels.tsv</code> - labels associated
-with the Pfam annotation of the prophage dataset</li>
-<li><code>pfam_annotation_secretion_systems/labels.tsv</code> - labels
-associated with the Pfam annotation of the secretion system dataset</li>
+<li><code>prophage_labels.tsv</code> - labels associated with the Pfam
+annotation of the prophage dataset</li>
+<li><code>sec_labels.tsv</code> - labels associated with the Pfam
+annotation of the secretion system dataset</li>
 </ul>
 </div>
 <div id="seurat-objects" class="section level2">
@@ -1709,8 +1717,7 @@ library(gridExtra)
 library(ggsignif)
 library(Signac)
 library(Seurat)
-library(clustree)
-library(patchwork)</code></pre>
+library(clustree)</code></pre>
 <pre class="r"><code>###FIGURE 2 MASTER CODE
 
 ##Panel B
@@ -1739,7 +1746,7 @@ sep_curated=sep_curated[-temp1,]
 
 #Importing IGUA clustering at default settings
 
-benchmark=read.delim(paste0(&quot;supplementary_table_4.tsv&quot;))
+benchmark=read.delim(paste0(&quot;supplementary_table_S4.tsv&quot;))
 benchmark$cluster_id=strtrim(benchmark$cluster_id,10)
 benchmark=benchmark %&gt;%
   group_by(gcf_id) %&gt;%
@@ -2031,7 +2038,7 @@ pro_umap=DimPlot(pfams_pro, cols=precols, label=FALSE, raster=FALSE, pt.size=1,
 
 #importing prophage clustering by IGUA and associated metadata
 prophage_metadata &lt;- read.delim(&quot;prophage_metadata.tsv&quot;, header=TRUE)
-pro_igua=read.delim(&#39;supplementary_table_17.tsv&#39;, header=TRUE)
+pro_igua=read.delim(&#39;supplementary_table_S17.tsv&#39;, header=TRUE)
 
 colnames(prophage_metadata)[1]=&quot;cluster_id&quot;
 
@@ -2135,7 +2142,7 @@ sec_umap=DimPlot(object = pfams_sec, label = FALSE, cols=precols, alpha=0.5,
 sec_tax=read.delim(&quot;single_locus_clusters_renamed2tax.tsv&quot;, header=FALSE)
 
 secretion_metadata &lt;- read.delim(&quot;single_locus_clusters_renamed.tsv&quot;, header=FALSE)
-sec_igua=read.delim(&#39;supplementary_table_13.tsv&#39;, header=TRUE)
+sec_igua=read.delim(&#39;supplementary_table_S13.tsv&#39;, header=TRUE)
 
 #setting up one master file for secretion systems
 
@@ -2253,7 +2260,7 @@ bgcs_umap=DimPlot(object = pfams, label = FALSE, cols=precols, alpha=0.5, pt.siz
 
 #importing BGC clustering by IGUA and associated metadata
 
-proG3_igua=read.delim(&#39;supplementary_table_11.tsv&#39;, header=TRUE)
+proG3_igua=read.delim(&#39;supplementary_table_S11.tsv&#39;, header=TRUE)
 bgcs_to_phylum=read.delim(&#39;bgcs_to_phylum.tsv&#39;, header=TRUE)
 
 #filtering singleton GCFs from file with taxonomic information
@@ -2488,7 +2495,7 @@ sep_curated=sep_curated[-temp1,]
 
 #Importing the BiG-SCAPE clustering of the manually curated dataset and filtering out records removed from the original curated dataset
 
-big_scape_glocal &lt;- read.delim(&quot;supplementary_table_2.tsv&quot;, header=FALSE, comment.char=&quot;#&quot;, stringsAsFactors=TRUE)
+big_scape_glocal &lt;- read.delim(&quot;supplementary_table_S2.tsv&quot;, header=FALSE, comment.char=&quot;#&quot;, stringsAsFactors=TRUE)
 colnames(big_scape_glocal)=c(&quot;mibig&quot;,&quot;GCF&quot;)
 big_scape_glocal$mibig=sapply(big_scape_glocal$mibig, function(x)
   sub(&quot;.1&quot;, &quot;&quot;,x,fixed=TRUE))
@@ -2587,7 +2594,7 @@ p8</code></pre>
 
 #Loading BiG-SCAPE clustering of the Streptomyces dataset
 
-big_scape &lt;- read.delim(&quot;supplementary_table_5.tsv&quot;, header=FALSE, comment.char=&quot;#&quot;)
+big_scape &lt;- read.delim(&quot;supplementary_table_S5.tsv&quot;, header=FALSE, comment.char=&quot;#&quot;)
 colnames(big_scape)=c(&quot;BGC&quot;,&quot;GCF_b&quot;)
 
 #Removing singleton GCFs
@@ -2598,7 +2605,7 @@ big_scape=big_scape%&gt;%
 
 #Loading the IGUA clustering of the Streptomyces dataset
 
-igua_strepto &lt;- read.delim(&quot;supplementary_table_6.tsv&quot;)
+igua_strepto &lt;- read.delim(&quot;supplementary_table_S6.tsv&quot;)
 igua=data.frame(igua_strepto$cluster_id, igua_strepto$gcf_id)
 colnames(igua)=c(&quot;BGC&quot;,&quot;GCF_h&quot;)
 
@@ -2635,7 +2642,7 @@ p10
 
 #Importing IGUA clustering of the Streptomyces dataset
 
-igua_strepto &lt;- read.delim(&quot;supplementary_table_6.tsv&quot;)
+igua_strepto &lt;- read.delim(&quot;supplementary_table_S6.tsv&quot;)
 
 #Filtering singleton GCFs
 
@@ -2644,7 +2651,7 @@ data=igua_strepto %&gt;%
   summarise(n=n())
 #Importing the BiG-SCAPE clustering of the Streptomyces dataset
 
-big_scape &lt;- read.delim(&quot;supplementary_table_5.tsv&quot;, header=FALSE, comment.char=&quot;#&quot;)
+big_scape &lt;- read.delim(&quot;supplementary_table_S5.tsv&quot;, header=FALSE, comment.char=&quot;#&quot;)
 colnames(big_scape)=c(&quot;BGC&quot;,&quot;GCF_b&quot;)
 
 #Filtering singleton GCFs
@@ -2681,7 +2688,7 @@ p12
 
 #Importing the BiG-SCAPE clustering of the Streptomyces dataset
 
-big_scape &lt;- read.delim(&quot;supplementary_table_5.tsv&quot;, header=FALSE, comment.char=&quot;#&quot;)
+big_scape &lt;- read.delim(&quot;supplementary_table_S5.tsv&quot;, header=FALSE, comment.char=&quot;#&quot;)
 colnames(big_scape)=c(&quot;BGC&quot;,&quot;GCF_b&quot;)
 
 #Removing singleton GCFs
@@ -2691,7 +2698,7 @@ big_scape=big_scape%&gt;%
 
 #Importing the IGUA clustering of the Streptomyces dataset
 
-igua_strepto &lt;- read.delim(&quot;supplementary_table_6.tsv&quot;)
+igua_strepto &lt;- read.delim(&quot;supplementary_table_S6.tsv&quot;)
 igua=data.frame(igua_strepto$cluster_id, igua_strepto$gcf_id)
 colnames(igua)=c(&quot;BGC&quot;,&quot;GCF_h&quot;)
 
@@ -2770,7 +2777,7 @@ clustree(pfams@meta.data, prefix = &quot;peaks_snn_res.&quot;)
 
 #Importing the BGC labels
 
-labels &lt;- read.delim(&quot;pfam_annotation_total_proG3/labels.tsv&quot;, header=FALSE)
+labels &lt;- read.delim(&quot;proG3_labels.tsv&quot;, header=FALSE)
 colnames(labels)=c(&quot;BGC&quot;, &quot;GCF&quot;)
 
 #Importing the biosynthetic class annotation associated with the proG3 dataset
@@ -2817,7 +2824,7 @@ classes$Biosynthetic_class=sapply(classes$Biosynthetic_class, function(x)
 
 #Importing the IGUA clustering of the proG3 dataset
 
-proG3_igua=read.delim(&#39;supplementary_table_11.tsv&#39;, header=TRUE)
+proG3_igua=read.delim(&#39;supplementary_table_S11.tsv&#39;, header=TRUE)
 colnames(proG3_igua)[1]=&quot;BGC&quot;
 
 #Attaching the class annotation to the IGUA clustering dataframe
@@ -2904,8 +2911,8 @@ precols = c(&quot;#15889C&quot;, &quot;#ED496F&quot;, &quot;#8E1382&quot;, &quot
 #Importing and merging the files
 
 secretion_metadata &lt;- read.delim(&quot;single_locus_clusters_renamed.tsv&quot;, header=FALSE)
-sec_igua=read.delim(&#39;supplementary_table_13.tsv&#39;, header=TRUE)
-labels_2 &lt;- read.delim(&quot;pfam_annotation_secretion_systems/labels.tsv&quot;, header=FALSE)
+sec_igua=read.delim(&#39;supplementary_table_S13.tsv&#39;, header=TRUE)
+labels_2 &lt;- read.delim(&quot;sec_labels.tsv&quot;, header=FALSE)
 
 colnames(sec_igua)[1]=&quot;secretion&quot;
 colnames(labels_2)=c(&quot;secretion&quot;,&quot;gcf_id&quot;)
@@ -3014,7 +3021,7 @@ precols = c(&quot;#15889C&quot;, &quot;#ED496F&quot;, &quot;#8E1382&quot;, &quot
 #Importing and sorting the metadata
 
 prophage_metadata &lt;- read.delim(&quot;prophage_metadata.tsv&quot;, header=TRUE)
-labels &lt;- read.delim(&quot;pfam_annotation_prophage/labels.tsv&quot;, header=FALSE)
+labels &lt;- read.delim(&quot;prophage_labels.tsv&quot;, header=FALSE)
 colnames(labels)=c(&quot;prophage&quot;,&quot;GCF&quot;)
 colnames(prophage_metadata)[1]=&quot;prophage&quot;
 metadata_prophage=merge(labels, prophage_metadata, by=&quot;prophage&quot;, all.x=TRUE)
