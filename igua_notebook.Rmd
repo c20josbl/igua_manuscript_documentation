@@ -776,7 +776,7 @@ ggsave("figure3.svg", plot = fig_3, device = "svg", dpi = 350, height = 17, widt
 ```
 
 ```{r, results='hide', eval=FALSE, echo=TRUE}
-###FIGURE 3 MASTER CODE
+###FIGURE 4 MASTER CODE
 
 ##For all panels - setting up separate data frame for plotting
 
